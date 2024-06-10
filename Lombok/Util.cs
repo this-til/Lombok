@@ -763,3 +763,11 @@ internal static class StringExtensions {
         return identifier.Decapitalize()!;
     }
 }
+
+public static class Util {
+    public static void noNull(object? obj, string? message = null) {
+        if (obj is null) {
+            throw new NullReferenceException(message);
+        }
+    }
+}

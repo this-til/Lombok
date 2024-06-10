@@ -200,8 +200,8 @@ public sealed class SetGenerator : AttributeGeneratorBasics {
 }
 
 [Generator]
-public sealed class GetAtGenerator : AttributeGeneratorBasics {
-    private static readonly string getAtName = nameof(GetAtAttribute);
+public sealed class IndexGenerator : AttributeGeneratorBasics {
+    private static readonly string getAtName = nameof(IndexAttribute);
 
     public override string getAttributeName() => getAtName;
 
@@ -317,6 +317,47 @@ public sealed class RemoveGenerator : AttributeGeneratorBasics {
     }
 }
 
+[Generator]
+public sealed class ContainGenerator : AttributeGeneratorBasics {
+    public override string getAttributeName() => nameof(ContainAttribute);
+
+    public override IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data) {
+        TypeSyntax typeSyntax = fieldDeclarationSyntax.Declaration.Type;
+        ListMetadataAttribute listMetadataAttribute = ListMetadataAttribute.of(data);
+        if (listMetadataAttribute.type is null && typeSyntax is GenericNameSyntax genericNameSyntax) {
+            TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
+            listMetadataAttribute.type = firstOrDefault?.ToFullString();
+        }
+        if (listMetadataAttribute.type == null) {
+            yield break;
+        }
+        foreach (VariableDeclaratorSyntax variable in fieldDeclarationSyntax.Declaration.Variables) {
+            yield return CreateMethodUtil.CreateContainRemoveMethod(
+                variable.ToString(),
+                ((ClassDeclarationSyntax)fieldDeclarationSyntax.Parent).getHasGenericName(),
+                listMetadataAttribute
+            );
+        }
+    }
+
+    public override IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data) {
+        TypeSyntax typeSyntax = propertyDeclarationSyntax.Type;
+        ListMetadataAttribute listMetadataAttribute = ListMetadataAttribute.of(data);
+        if (listMetadataAttribute.type is null && typeSyntax is GenericNameSyntax genericNameSyntax) {
+            TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
+            listMetadataAttribute.type = firstOrDefault?.ToFullString();
+        }
+        if (listMetadataAttribute.type == null) {
+            yield break;
+        }
+        yield return CreateMethodUtil.CreateContainRemoveMethod(
+            propertyDeclarationSyntax.Initializer.ToString(),
+            ((ClassDeclarationSyntax)propertyDeclarationSyntax.Parent).getHasGenericName(),
+            listMetadataAttribute
+        );
+    }
+}
+
 public static class CreateMethodUtil {
     public static SourceText CreatePartialClass(NameSyntax @namespace, ClassDeclarationSyntax classDeclaration, IEnumerable<MethodDeclarationSyntax> methods) {
         return @namespace.CreateNewNamespace(classDeclaration.GetUsings(),
@@ -328,7 +369,7 @@ public static class CreateMethodUtil {
             .GetText(Encoding.UTF8);
     }
 
-    public static ExpressionStatementSyntax? validateNonFrozen(string freezeTag) {
+    public static ExpressionStatementSyntax validateNonFrozen(string freezeTag) {
         return
             string.IsNullOrEmpty(freezeTag)
                 ? null!
@@ -347,6 +388,32 @@ public static class CreateMethodUtil {
                         )
                     )
                 );
+    }
+
+    public static ExpressionStatementSyntax noNull(string fieldName, string? message = null) {
+        return ExpressionStatement(
+            InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName(nameof(Util)),
+                    IdentifierName(nameof(Util.noNull)) // 方法名  
+                ),
+                ArgumentList( // 创建参数列表  
+                    SeparatedList(
+                        new[] {
+                            Argument( // 创建一个参数表达式  
+                                IdentifierName(fieldName) // 引用参数i  
+                            ),
+                            message is null
+                                ? Argument( // 创建一个参数表达式  
+                                    IdentifierName("\"{message}\"") // 引用参数i  
+                                )
+                                : null!
+                        }.Where(v => v is not null)
+                    )
+                )
+            )
+        );
     }
 
     public static MethodDeclarationSyntax CreateGetMethod(string fieldName, string typeName, MetadataAttribute metadataAttribute) {
@@ -383,8 +450,11 @@ public static class CreateMethodUtil {
             .AddParameterListParameters(Parameter(Identifier(fieldName.ToCamelCaseIdentifier())).WithType(ParseTypeName(typeName)))
             .WithBody(
                 Block(
-                    new List<StatementSyntax>() {
+                    new StatementSyntax[] {
                         validateNonFrozen(metadataAttribute.freezeTag)!,
+                        metadataAttribute.noNull
+                            ? noNull(fieldName, $"{parentName}.{"set" + fieldName.ToPascalCaseIdentifier()}方法中传入参数为null")
+                            : null!,
                         ExpressionStatement(
                             AssignmentExpression(
                                 SyntaxKind.SimpleAssignmentExpression,
@@ -401,7 +471,7 @@ public static class CreateMethodUtil {
                                 ThisExpression()
                             )
                             : null!
-                    }.Where(v => v is not null).ToList()
+                    }.Where(v => v is not null)
                 )
             );
     }
@@ -415,7 +485,7 @@ public static class CreateMethodUtil {
             .AddParameterListParameters(
                 Parameter(Identifier("i")).WithType(ParseTypeName("int"))
             ).WithBody(Block(
-                    new List<StatementSyntax>() {
+                    new StatementSyntax[] {
                         validateNonFrozen(listMetadataAttribute.freezeTag)!,
                         ReturnStatement( // 创建一个 return 语句  
                             ElementAccessExpression( // 创建一个数组或列表的索引访问表达式  
@@ -445,24 +515,14 @@ public static class CreateMethodUtil {
             .AddParameterListParameters(Parameter(Identifier("a" + listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate())).WithType(ParseTypeName(listMetadataAttribute.type)))
             .WithBody(
                 Block(
-                    new List<StatementSyntax>() {
-                        string.IsNullOrEmpty(listMetadataAttribute.freezeTag)
-                            ? null!
-                            : ExpressionStatement(
-                                InvocationExpression(
-                                    IdentifierName("this.validateNonFrozen"),
-                                    ArgumentList(
-                                        SingletonSeparatedList(
-                                            Argument(
-                                                LiteralExpression(
-                                                    SyntaxKind.StringLiteralExpression,
-                                                    Literal(listMetadataAttribute.freezeTag)
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            ),
+                    new StatementSyntax[] {
+                        validateNonFrozen(listMetadataAttribute.freezeTag)!,
+                        listMetadataAttribute.noNull
+                            ? noNull(fieldName, $"{parentName}.add{listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate()}In{fieldName.ToPascalCaseIdentifier().genericEliminate()}方法中传入参数为null")
+                            : null!,
+                        listMetadataAttribute.noNull
+                            ? noNull(fieldName, $"{parentName}.{"set" + fieldName.ToPascalCaseIdentifier()}方法中传入参数为null")
+                            : null!,
                         ExpressionStatement(
                             InvocationExpression( // 创建一个方法调用表达式  
                                 MemberAccessExpression( // 创建一个成员访问表达式（this.list.Add）  
@@ -484,7 +544,7 @@ public static class CreateMethodUtil {
                                 ThisExpression()
                             )
                             : null!
-                    }.Where(v => v is not null).ToList()
+                    }.Where(v => v is not null)
                 )
             );
     }
@@ -500,24 +560,8 @@ public static class CreateMethodUtil {
             .AddParameterListParameters(Parameter(Identifier("a" + listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate())).WithType(ParseTypeName(listMetadataAttribute.type)))
             .WithBody(
                 Block(
-                    new List<StatementSyntax>() {
-                        string.IsNullOrEmpty(listMetadataAttribute.freezeTag)
-                            ? null!
-                            : ExpressionStatement(
-                                InvocationExpression(
-                                    IdentifierName("this.validateNonFrozen"),
-                                    ArgumentList(
-                                        SingletonSeparatedList(
-                                            Argument(
-                                                LiteralExpression(
-                                                    SyntaxKind.StringLiteralExpression,
-                                                    Literal(listMetadataAttribute.freezeTag)
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            ),
+                    new StatementSyntax[] {
+                        validateNonFrozen(listMetadataAttribute.freezeTag)!,
                         ExpressionStatement(
                             InvocationExpression( // 创建一个方法调用表达式  
                                 MemberAccessExpression( // 创建一个成员访问表达式（this.list.Add）  
@@ -539,6 +583,36 @@ public static class CreateMethodUtil {
                                 ThisExpression()
                             )
                             : null!
+                    }.Where(v => v is not null).ToList()
+                )
+            );
+    }
+
+    public static MethodDeclarationSyntax CreateContainRemoveMethod(string fieldName, string parentName, ListMetadataAttribute listMetadataAttribute) {
+        return MethodDeclaration(
+                IdentifierName("bool"),
+                $"contain{listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate()}In{fieldName.ToPascalCaseIdentifier().genericEliminate()}"
+            )
+            .AddModifiers(Token(SyntaxKind.PublicKeyword))
+            .AddParameterListParameters(Parameter(Identifier("a" + listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate())).WithType(ParseTypeName(listMetadataAttribute.type)))
+            .WithBody(
+                Block(
+                    new StatementSyntax[] {
+                        validateNonFrozen(listMetadataAttribute.freezeTag)!,
+                        ReturnStatement(
+                            InvocationExpression(
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    IdentifierName(fieldName),
+                                    IdentifierName("Contains")
+                                ),
+                                ArgumentList(
+                                    SingletonSeparatedList(
+                                        Argument(IdentifierName("a" + listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate()))
+                                    )
+                                )
+                            )
+                        )
                     }.Where(v => v is not null).ToList()
                 )
             );

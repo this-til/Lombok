@@ -1,4 +1,5 @@
-﻿using Til.Lombok;
+﻿using System.Diagnostics.CodeAnalysis;
+using Til.Lombok;
 using Xunit;
 
 namespace Lombok.Test;
@@ -20,8 +21,11 @@ public partial class Data {
     [Set(link = true, freezeTag = "some time")]
     private int y { get; set; }
 
-    [Get] [GetAt] [Set] [Add] [Remove] public List<int> list;
-    [Get] [GetAt] [Set] [Add] [Remove] public List<List<int>> twoList;
+    [Get] [Index] [Set] [Add] [Remove] [Contain]
+    public List<int> list;
+
+    [Get] [Index] [Set] [Add] [Remove] [Contain]
+    public List<List<int>> twoList;
 
     public int aa(int i) {
         return list[i];

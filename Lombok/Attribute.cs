@@ -17,17 +17,22 @@ public class MetadataAttribute : Attribute {
     /// </summary>
     public bool link;
 
+    public bool noNull;
+
     /// <summary>
     /// 在 get set 方法中，如果不为空将进行冻结验证，验证不通过将抛出异常
     /// </summary>
     public string freezeTag;
-    
+
     public string type;
 
     public static MetadataAttribute of(Dictionary<string, object?> data) {
         var attribute = new MetadataAttribute();
         if (data.TryGetValue("link", out var link)) {
             attribute.link = link is not null && (bool)link;
+        }
+        if (data.TryGetValue("link", out var noNull)) {
+            attribute.noNull = noNull is not null && (bool)noNull;
         }
         if (data.TryGetValue("freezeTag", out var freezeTag)) {
             attribute.freezeTag = freezeTag?.ToString() ?? string.Empty;
@@ -95,13 +100,17 @@ public class SetAttribute : MetadataAttribute {
 }
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-public class AddAttribute : MetadataAttribute {
+public class AddAttribute : ListMetadataAttribute {
 }
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-public class RemoveAttribute : MetadataAttribute {
+public class RemoveAttribute : ListMetadataAttribute {
 }
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-public class GetAtAttribute : MetadataAttribute {
+public class IndexAttribute : ListMetadataAttribute {
+}
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class ContainAttribute : ListMetadataAttribute {
 }

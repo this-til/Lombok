@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -11,20 +12,17 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Til.Lombok;
 
-[Generator]
-public sealed class GetGenerator : IIncrementalGenerator {
+public abstract class GeneratorBasics : IIncrementalGenerator {
     private static readonly string AttributeName = typeof(ILombokAttribute).FullName!;
-
-    private static readonly string getName = nameof(GetAttribute);
 
     public void Initialize(IncrementalGeneratorInitializationContext context) {
         var sources = context.SyntaxProvider.ForAttributeWithMetadataName(AttributeName, IsCandidate, Transform);
         context.AddSources(sources);
     }
 
-    private static bool IsCandidate(SyntaxNode node, CancellationToken cancellationToken) => node is ClassDeclarationSyntax;
+    private bool IsCandidate(SyntaxNode node, CancellationToken cancellationToken) => node is ClassDeclarationSyntax;
 
-    private static GeneratorResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken) {
+    private GeneratorResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken) {
         ClassDeclarationSyntax contextTargetNode = (ClassDeclarationSyntax)context.TargetNode;
 
         if (!contextTargetNode.TryValidateType(out var @namespace, out var diagnostic)) {
@@ -37,93 +35,290 @@ public sealed class GetGenerator : IIncrementalGenerator {
             switch (member) {
                 // 检查成员是否是字段或属性  
                 case FieldDeclarationSyntax fieldDeclaration: {
-                    AttributeSyntax? tryGetSpecifiedAttribute = fieldDeclaration.AttributeLists.tryGetSpecifiedAttribute(getName);
-
-                    if (tryGetSpecifiedAttribute is null) {
-                        continue;
-                    }
-
-                    // 处理字段  
-                    foreach (VariableDeclaratorSyntax variable in fieldDeclaration.Declaration.Variables) {
-                        methodDeclarationSyntaxes.Add(CreateMethodFromField(variable));
-                    }
+                    methodDeclarationSyntaxes.AddRange(onFieldDeclarationSyntax(fieldDeclaration));
                     break;
                 }
                 case PropertyDeclarationSyntax propertyDeclaration: {
-                    AttributeSyntax? tryGetSpecifiedAttribute = propertyDeclaration.AttributeLists.tryGetSpecifiedAttribute(getName);
-
-                    if (tryGetSpecifiedAttribute is null) {
-                        continue;
-                    }
-                    methodDeclarationSyntaxes.Add(CreateMethodFromProperty(propertyDeclaration));
-
+                    methodDeclarationSyntaxes.AddRange(onPropertyDeclarationSyntax(propertyDeclaration));
                     break;
                 }
             }
         }
 
-        return new GeneratorResult(contextTargetNode.GetHintName(@namespace), CreatePartialClass(@namespace, contextTargetNode, methodDeclarationSyntaxes));
-    }
-
-    private static MethodDeclarationSyntax CreateMethodFromProperty(PropertyDeclarationSyntax propertyDeclarationSyntax) {
-        return CreateMethod(
-            MethodDeclaration(IdentifierName(propertyDeclarationSyntax.Type.ToString()), "get" + propertyDeclarationSyntax.Identifier.Text.ToPascalCaseIdentifier()),
-            Parameter(Identifier(propertyDeclarationSyntax.Identifier.Text.ToCamelCaseIdentifier())).WithType(propertyDeclarationSyntax.Type),
-            propertyDeclarationSyntax.Identifier.Text,
-            propertyDeclarationSyntax.Modifiers.Any(SyntaxKind.StaticKeyword)
-        );
-    }
-
-    private static MethodDeclarationSyntax CreateMethodFromField(VariableDeclaratorSyntax variableDeclaratorSyntax) {
-        VariableDeclarationSyntax variableDeclarationSyntax = (VariableDeclarationSyntax)variableDeclaratorSyntax.Parent!;
-        FieldDeclarationSyntax fieldDeclarationSyntax = (FieldDeclarationSyntax)variableDeclarationSyntax.Parent!;
-        return CreateMethod(
-            MethodDeclaration(IdentifierName(variableDeclarationSyntax.Type.ToString()), "get" + variableDeclaratorSyntax.Identifier.Text.ToPascalCaseIdentifier()),
-            Parameter(Identifier(variableDeclaratorSyntax.Identifier.Text.ToCamelCaseIdentifier())).WithType(variableDeclarationSyntax.Type),
-            variableDeclaratorSyntax.Identifier.Text,
-            fieldDeclarationSyntax.Modifiers.Any(SyntaxKind.StaticKeyword)
-        );
-    }
-
-    private static IEnumerable<MethodDeclarationSyntax> CreateMethodFromField(FieldDeclarationSyntax fieldDeclarationSyntax) {
-        return fieldDeclarationSyntax.Declaration.Variables.Select(CreateMethodFromField);
-    }
-
-    private static MethodDeclarationSyntax CreateMethod(MethodDeclarationSyntax method, ParameterSyntax parameter, string memberName, bool isStatic) {
-        method = method.AddModifiers(Token(SyntaxKind.PublicKeyword));
-        if (isStatic) {
-            method = method.AddModifiers(Token(SyntaxKind.StaticKeyword));
+        if (methodDeclarationSyntaxes.Count == 0) {
+            return GeneratorResult.Empty;
         }
-        method = method.AddParameterListParameters(
-            parameter
+
+        return new GeneratorResult(contextTargetNode.GetHintName(@namespace), CreateMethodUtil.CreatePartialClass(@namespace, contextTargetNode, methodDeclarationSyntaxes));
+    }
+
+    public abstract IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax);
+
+    public abstract IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax);
+}
+
+[Generator]
+public sealed class FreezeGenerator : IIncrementalGenerator {
+    private static readonly string AttributeName = typeof(IFreezeAttribute).FullName!;
+
+    public void Initialize(IncrementalGeneratorInitializationContext context) {
+        var sources = context.SyntaxProvider.ForAttributeWithMetadataName(AttributeName, IsCandidate, Transform);
+        context.AddSources(sources);
+    }
+
+    private bool IsCandidate(SyntaxNode node, CancellationToken cancellationToken) => node is ClassDeclarationSyntax;
+
+    private GeneratorResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken) {
+        ClassDeclarationSyntax contextTargetNode = (ClassDeclarationSyntax)context.TargetNode;
+
+        if (!contextTargetNode.TryValidateType(out var @namespace, out var diagnostic)) {
+            return new GeneratorResult(diagnostic);
+        }
+
+        string model = $"""
+                        using System.Collections.Generic;
+
+                        namespace {@namespace.ToString()} {'{'}
+                        
+                            public partial class {contextTargetNode.Identifier.ToString()} {'{'}
+                                protected Dictionary<string, bool> _frozen = new Dictionary<string, bool>();
+                            
+                                public bool isFrozen(string tag) {'{'}
+                                    if (_frozen.ContainsKey(tag)) {'{'}
+                                        return _frozen[tag];
+                                    {'}'}
+                                    _frozen.Add(tag, false);
+                                    return false;
+                                {'}'}
+                            
+                                public void frozen(string tag) {'{'}
+                                    if (_frozen.ContainsKey(tag)) {'{'}
+                                        _frozen[tag] = true;
+                                        return;
+                                    {'}'}
+                                    _frozen.Add(tag, true);
+                                {'}'}
+                            
+                                public void validateNonFrozen(string tag) {'{'}
+                                    if (_frozen.ContainsKey(tag) && _frozen[tag]) {'{'}
+                                        throw new InvalidOperationException("Cannot modify frozen property");
+                                    {'}'}
+                                {'}'}
+                            {'}'}
+                        {'}'}
+                        """;
+
+        return new GeneratorResult(
+            contextTargetNode.GetHintName(@namespace),
+            SourceText.From(model, Encoding.UTF8)
         );
-        if (isStatic) {
-            method = method.WithBody(
-                Block(
-                    ReturnStatement(
-                        IdentifierName(memberName)
-                    )
-                )
+    }
+}
+
+public abstract class AttributeGeneratorBasics : GeneratorBasics {
+    public abstract string getAttributeName();
+    public abstract IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data);
+
+    public abstract IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data);
+
+    public override IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax) {
+        AttributeSyntax? tryGetSpecifiedAttribute = fieldDeclarationSyntax.AttributeLists.tryGetSpecifiedAttribute(getAttributeName());
+
+        if (tryGetSpecifiedAttribute is null) {
+            return Array.Empty<MethodDeclarationSyntax>();
+        }
+        return onFieldDeclarationSyntax(fieldDeclarationSyntax, tryGetSpecifiedAttribute, tryGetSpecifiedAttribute.getAttributeArgumentsAsDictionary());
+    }
+
+    public override IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax) {
+        AttributeSyntax? tryGetSpecifiedAttribute = propertyDeclarationSyntax.AttributeLists.tryGetSpecifiedAttribute(getAttributeName());
+
+        if (tryGetSpecifiedAttribute is null) {
+            return Array.Empty<MethodDeclarationSyntax>();
+        }
+
+        return onPropertyDeclarationSyntax(propertyDeclarationSyntax, tryGetSpecifiedAttribute, tryGetSpecifiedAttribute.getAttributeArgumentsAsDictionary());
+    }
+}
+
+[Generator]
+public sealed class GetGenerator : AttributeGeneratorBasics {
+    private static readonly string getName = nameof(GetAttribute);
+
+    public override string getAttributeName() => getName;
+
+    public override IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data) {
+        MetadataAttribute metadataAttribute = MetadataAttribute.of(data);
+        foreach (VariableDeclaratorSyntax variable in fieldDeclarationSyntax.Declaration.Variables) {
+            yield return CreateMethodUtil.CreateGetMethod(
+                variable.Identifier.Text,
+                fieldDeclarationSyntax.Declaration.Type.ToString(),
+                metadataAttribute
             );
         }
-        else {
-            method = method.WithBody(
-                Block(
-                    ReturnStatement(
-                        MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            ThisExpression(),
-                            IdentifierName(memberName)
-                        )
-                    )
-                )
-            );
-        }
-
-        return method;
     }
 
-    private static SourceText CreatePartialClass(NameSyntax @namespace, ClassDeclarationSyntax classDeclaration, IEnumerable<MethodDeclarationSyntax> methods) {
+    public override IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data) {
+        MetadataAttribute metadataAttribute = MetadataAttribute.of(data);
+        yield return CreateMethodUtil.CreateGetMethod(
+            propertyDeclarationSyntax.Identifier.ToString(),
+            propertyDeclarationSyntax.Type.ToString(),
+            metadataAttribute
+        );
+    }
+}
+
+[Generator]
+public sealed class SetGenerator : AttributeGeneratorBasics {
+    private static readonly string setName = nameof(SetAttribute);
+
+    public override string getAttributeName() => setName;
+
+    public override IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data) {
+        MetadataAttribute metadataAttribute = MetadataAttribute.of(data);
+
+        foreach (VariableDeclaratorSyntax variable in fieldDeclarationSyntax.Declaration.Variables) {
+            //yield return CreateMethodUtil.CreateSetMethod(variable, _freezeTag as string ?? string.Empty, _link is not null && (bool)_link);
+            yield return CreateMethodUtil.CreateSetMethod(
+                variable.ToString(),
+                fieldDeclarationSyntax.Declaration.Type.ToString(),
+                ((ClassDeclarationSyntax)fieldDeclarationSyntax.Parent).getHasGenericName(),
+                metadataAttribute
+            );
+        }
+    }
+
+    public override IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data) {
+        MetadataAttribute metadataAttribute = MetadataAttribute.of(data);
+        yield return CreateMethodUtil.CreateSetMethod(
+            propertyDeclarationSyntax.Identifier.ToString(),
+            propertyDeclarationSyntax.Type.ToString(),
+            ((ClassDeclarationSyntax)propertyDeclarationSyntax.Parent).getHasGenericName(),
+            metadataAttribute
+        );
+    }
+}
+
+[Generator]
+public sealed class GetAtGenerator : AttributeGeneratorBasics {
+    private static readonly string getAtName = nameof(GetAtAttribute);
+
+    public override string getAttributeName() => getAtName;
+
+    public override IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data) {
+        VariableDeclarationSyntax variableDeclarationSyntax = fieldDeclarationSyntax.Declaration;
+        TypeSyntax typeSyntax = variableDeclarationSyntax.Type;
+        ListMetadataAttribute listMetadataAttribute = ListMetadataAttribute.of(data);
+        if (listMetadataAttribute.type is null && typeSyntax is GenericNameSyntax genericNameSyntax) {
+            TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
+            listMetadataAttribute.type = firstOrDefault?.ToFullString();
+        }
+        if (listMetadataAttribute.type == null) {
+            yield break;
+        }
+        foreach (VariableDeclaratorSyntax variable in fieldDeclarationSyntax.Declaration.Variables) {
+            yield return CreateMethodUtil.CreateGetAtMethod(variable.ToString(), listMetadataAttribute);
+        }
+    }
+
+    public override IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data) {
+        TypeSyntax typeSyntax = propertyDeclarationSyntax.Type;
+        ListMetadataAttribute listMetadataAttribute = ListMetadataAttribute.of(data);
+        if (listMetadataAttribute.type is null && typeSyntax is GenericNameSyntax genericNameSyntax) {
+            TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
+            listMetadataAttribute.type = firstOrDefault?.ToFullString();
+        }
+        if (listMetadataAttribute.type == null) {
+            yield break;
+        }
+        yield return CreateMethodUtil.CreateGetAtMethod(propertyDeclarationSyntax.Initializer.ToString(), listMetadataAttribute);
+    }
+}
+
+[Generator]
+public sealed class AddGenerator : AttributeGeneratorBasics {
+    public override string getAttributeName() => nameof(AddAttribute);
+
+    public override IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data) {
+        TypeSyntax typeSyntax = fieldDeclarationSyntax.Declaration.Type;
+        ListMetadataAttribute listMetadataAttribute = ListMetadataAttribute.of(data);
+        if (listMetadataAttribute.type is null && typeSyntax is GenericNameSyntax genericNameSyntax) {
+            TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
+            listMetadataAttribute.type = firstOrDefault?.ToFullString();
+        }
+        if (listMetadataAttribute.type == null) {
+            yield break;
+        }
+        foreach (VariableDeclaratorSyntax variable in fieldDeclarationSyntax.Declaration.Variables) {
+            yield return CreateMethodUtil.CreateAddMethod(
+                variable.ToString(),
+                ((ClassDeclarationSyntax)fieldDeclarationSyntax.Parent).getHasGenericName(),
+                listMetadataAttribute
+            );
+        }
+    }
+
+    public override IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data) {
+        TypeSyntax typeSyntax = propertyDeclarationSyntax.Type;
+        ListMetadataAttribute listMetadataAttribute = ListMetadataAttribute.of(data);
+        if (listMetadataAttribute.type is null && typeSyntax is GenericNameSyntax genericNameSyntax) {
+            TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
+            listMetadataAttribute.type = firstOrDefault?.ToFullString();
+        }
+        if (listMetadataAttribute.type == null) {
+            yield break;
+        }
+        yield return CreateMethodUtil.CreateAddMethod(
+            propertyDeclarationSyntax.Initializer.ToString(),
+            ((ClassDeclarationSyntax)propertyDeclarationSyntax.Parent).getHasGenericName(),
+            listMetadataAttribute
+        );
+    }
+}
+
+[Generator]
+public sealed class RemoveGenerator : AttributeGeneratorBasics {
+    public override string getAttributeName() => nameof(AddAttribute);
+
+    public override IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data) {
+        TypeSyntax typeSyntax = fieldDeclarationSyntax.Declaration.Type;
+        ListMetadataAttribute listMetadataAttribute = ListMetadataAttribute.of(data);
+        if (listMetadataAttribute.type is null && typeSyntax is GenericNameSyntax genericNameSyntax) {
+            TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
+            listMetadataAttribute.type = firstOrDefault?.ToFullString();
+        }
+        if (listMetadataAttribute.type == null) {
+            yield break;
+        }
+        foreach (VariableDeclaratorSyntax variable in fieldDeclarationSyntax.Declaration.Variables) {
+            yield return CreateMethodUtil.CreateRemoveMethod(
+                variable.ToString(),
+                ((ClassDeclarationSyntax)fieldDeclarationSyntax.Parent).getHasGenericName(),
+                listMetadataAttribute
+            );
+        }
+    }
+
+    public override IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data) {
+        TypeSyntax typeSyntax = propertyDeclarationSyntax.Type;
+        ListMetadataAttribute listMetadataAttribute = ListMetadataAttribute.of(data);
+        if (listMetadataAttribute.type is null && typeSyntax is GenericNameSyntax genericNameSyntax) {
+            TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
+            listMetadataAttribute.type = firstOrDefault?.ToFullString();
+        }
+        if (listMetadataAttribute.type == null) {
+            yield break;
+        }
+        yield return CreateMethodUtil.CreateRemoveMethod(
+            propertyDeclarationSyntax.Initializer.ToString(),
+            ((ClassDeclarationSyntax)propertyDeclarationSyntax.Parent).getHasGenericName(),
+            listMetadataAttribute
+        );
+    }
+}
+
+public static class CreateMethodUtil {
+    public static SourceText CreatePartialClass(NameSyntax @namespace, ClassDeclarationSyntax classDeclaration, IEnumerable<MethodDeclarationSyntax> methods) {
         return @namespace.CreateNewNamespace(classDeclaration.GetUsings(),
                 classDeclaration.CreateNewPartialClass()
                     .WithMembers(
@@ -132,55 +327,220 @@ public sealed class GetGenerator : IIncrementalGenerator {
             ).NormalizeWhitespace()
             .GetText(Encoding.UTF8);
     }
-}
 
-public static class CreateMethodUtil {
-    public static MethodDeclarationSyntax CreateGetMethod(PropertyDeclarationSyntax propertyDeclarationSyntax) {
-        return CreateGetMethod(
-            MethodDeclaration(IdentifierName(propertyDeclarationSyntax.Type.ToString()), "get" + propertyDeclarationSyntax.Identifier.Text.ToPascalCaseIdentifier()),
-            Parameter(Identifier(propertyDeclarationSyntax.Identifier.Text.ToCamelCaseIdentifier())).WithType(propertyDeclarationSyntax.Type),
-            propertyDeclarationSyntax.Identifier.Text,
-            propertyDeclarationSyntax.Modifiers.Any(SyntaxKind.StaticKeyword)
-        );
-    }
-
-    public static MethodDeclarationSyntax CreateGetMethod(VariableDeclaratorSyntax variableDeclaratorSyntax) {
-        VariableDeclarationSyntax variableDeclarationSyntax = (VariableDeclarationSyntax)variableDeclaratorSyntax.Parent!;
-        FieldDeclarationSyntax fieldDeclarationSyntax = (FieldDeclarationSyntax)variableDeclarationSyntax.Parent!;
-        return CreateGetMethod(
-            MethodDeclaration(IdentifierName(variableDeclarationSyntax.Type.ToString()), "get" + variableDeclaratorSyntax.Identifier.Text.ToPascalCaseIdentifier()),
-            Parameter(Identifier(variableDeclaratorSyntax.Identifier.Text.ToCamelCaseIdentifier())).WithType(variableDeclarationSyntax.Type),
-            variableDeclaratorSyntax.Identifier.Text,
-            fieldDeclarationSyntax.Modifiers.Any(SyntaxKind.StaticKeyword)
-        );
-    }
-
-    public static MethodDeclarationSyntax CreateGetMethod(MethodDeclarationSyntax method, ParameterSyntax parameter, string memberName, bool isStatic) {
-        method = method.AddModifiers(Token(SyntaxKind.PublicKeyword));
-        if (isStatic) {
-            method = method.AddModifiers(Token(SyntaxKind.StaticKeyword));
-        }
-        method = method.AddParameterListParameters(
-            parameter
-        );
-        method = method.WithBody(
-            Block(
-                ReturnStatement(
-                    isStatic
-                        ? IdentifierName(memberName)
-                        : MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            ThisExpression(),
-                            IdentifierName(memberName)
+    public static ExpressionStatementSyntax? validateNonFrozen(string freezeTag) {
+        return
+            string.IsNullOrEmpty(freezeTag)
+                ? null!
+                : ExpressionStatement(
+                    InvocationExpression(
+                        IdentifierName("this.validateNonFrozen"),
+                        ArgumentList(
+                            SingletonSeparatedList(
+                                Argument(
+                                    LiteralExpression(
+                                        SyntaxKind.StringLiteralExpression,
+                                        Literal(freezeTag)
+                                    )
+                                )
+                            )
                         )
-                )
-            )
-        );
-
-        return method;
+                    )
+                );
     }
 
-    public static MethodDeclarationSyntax CreateSetMethod(MethodDeclarationSyntax method, ParameterSyntax parameter, string memberName, bool isStatic, string freezeTag) {
-        return method.AddModifiers(isStatic ? new[] { Token(SyntaxKind.PublicKeyword) } : new[] { Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword) });
+    public static MethodDeclarationSyntax CreateGetMethod(string fieldName, string typeName, MetadataAttribute metadataAttribute) {
+        return MethodDeclaration(
+                IdentifierName(typeName),
+                "get" + fieldName.ToPascalCaseIdentifier()
+            )
+            .AddModifiers(Token(SyntaxKind.PublicKeyword))
+            .WithBody(
+                Block(
+                    new List<StatementSyntax>() {
+                        validateNonFrozen(metadataAttribute.freezeTag)!,
+
+                        ReturnStatement(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                ThisExpression(),
+                                IdentifierName(fieldName)
+                            )
+                        )
+                    }.Where(v => v is not null).ToList()
+                )
+            );
+    }
+
+    public static MethodDeclarationSyntax CreateSetMethod(string fieldName, string typeName, string parentName, MetadataAttribute metadataAttribute) {
+        return MethodDeclaration(
+                metadataAttribute.link
+                    ? IdentifierName(parentName)
+                    : IdentifierName("void"),
+                "set" + fieldName.ToPascalCaseIdentifier()
+            )
+            .AddModifiers(Token(SyntaxKind.PublicKeyword))
+            .AddParameterListParameters(Parameter(Identifier(fieldName.ToCamelCaseIdentifier())).WithType(ParseTypeName(typeName)))
+            .WithBody(
+                Block(
+                    new List<StatementSyntax>() {
+                        validateNonFrozen(metadataAttribute.freezeTag)!,
+                        ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    ThisExpression(),
+                                    IdentifierName(fieldName)
+                                ),
+                                IdentifierName(fieldName)
+                            )
+                        ),
+                        metadataAttribute.link
+                            ? ReturnStatement(
+                                ThisExpression()
+                            )
+                            : null!
+                    }.Where(v => v is not null).ToList()
+                )
+            );
+    }
+
+    public static MethodDeclarationSyntax CreateGetAtMethod(string fieldName, ListMetadataAttribute listMetadataAttribute) {
+        return MethodDeclaration(
+                IdentifierName(listMetadataAttribute.type),
+                $"get{listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate()}In{fieldName.ToPascalCaseIdentifier().genericEliminate()}ByIndex"
+            )
+            .AddModifiers(Token(SyntaxKind.PublicKeyword))
+            .AddParameterListParameters(
+                Parameter(Identifier("i")).WithType(ParseTypeName("int"))
+            ).WithBody(Block(
+                    new List<StatementSyntax>() {
+                        validateNonFrozen(listMetadataAttribute.freezeTag)!,
+                        ReturnStatement( // 创建一个 return 语句  
+                            ElementAccessExpression( // 创建一个数组或列表的索引访问表达式  
+                                IdentifierName(fieldName), // 假设 list 是当前类或结构体的一个字段  
+                                BracketedArgumentList( // 索引参数列表  
+                                    SingletonSeparatedList( // 单个参数列表  
+                                        Argument( // 创建一个参数表达式  
+                                            IdentifierName("i") // 引用参数 i  
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                    }.Where(i => i is not null)
+                )
+            );
+    }
+
+    public static MethodDeclarationSyntax CreateAddMethod(string fieldName, string parentName, ListMetadataAttribute listMetadataAttribute) {
+        return MethodDeclaration(
+                listMetadataAttribute.link
+                    ? IdentifierName(parentName)
+                    : IdentifierName("void"),
+                $"add{listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate()}In{fieldName.ToPascalCaseIdentifier().genericEliminate()}"
+            )
+            .AddModifiers(Token(SyntaxKind.PublicKeyword))
+            .AddParameterListParameters(Parameter(Identifier("a" + listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate())).WithType(ParseTypeName(listMetadataAttribute.type)))
+            .WithBody(
+                Block(
+                    new List<StatementSyntax>() {
+                        string.IsNullOrEmpty(listMetadataAttribute.freezeTag)
+                            ? null!
+                            : ExpressionStatement(
+                                InvocationExpression(
+                                    IdentifierName("this.validateNonFrozen"),
+                                    ArgumentList(
+                                        SingletonSeparatedList(
+                                            Argument(
+                                                LiteralExpression(
+                                                    SyntaxKind.StringLiteralExpression,
+                                                    Literal(listMetadataAttribute.freezeTag)
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
+                        ExpressionStatement(
+                            InvocationExpression( // 创建一个方法调用表达式  
+                                MemberAccessExpression( // 创建一个成员访问表达式（this.list.Add）  
+                                    SyntaxKind.SimpleMemberAccessExpression, // 使用点号访问  
+                                    ThisExpression(), // 访问当前实例的this  
+                                    IdentifierName($"{fieldName}.Add") // 访问名为list的成员  
+                                ),
+                                ArgumentList( // 创建参数列表  
+                                    SingletonSeparatedList( // 单个参数列表  
+                                        Argument( // 创建一个参数表达式  
+                                            IdentifierName("a" + listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate()) // 引用参数i  
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        listMetadataAttribute.link
+                            ? ReturnStatement(
+                                ThisExpression()
+                            )
+                            : null!
+                    }.Where(v => v is not null).ToList()
+                )
+            );
+    }
+
+    public static MethodDeclarationSyntax CreateRemoveMethod(string fieldName, string parentName, ListMetadataAttribute listMetadataAttribute) {
+        return MethodDeclaration(
+                listMetadataAttribute.link
+                    ? IdentifierName(parentName)
+                    : IdentifierName("void"),
+                $"remove{listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate()}In{fieldName.ToPascalCaseIdentifier().genericEliminate()}"
+            )
+            .AddModifiers(Token(SyntaxKind.PublicKeyword))
+            .AddParameterListParameters(Parameter(Identifier("a" + listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate())).WithType(ParseTypeName(listMetadataAttribute.type)))
+            .WithBody(
+                Block(
+                    new List<StatementSyntax>() {
+                        string.IsNullOrEmpty(listMetadataAttribute.freezeTag)
+                            ? null!
+                            : ExpressionStatement(
+                                InvocationExpression(
+                                    IdentifierName("this.validateNonFrozen"),
+                                    ArgumentList(
+                                        SingletonSeparatedList(
+                                            Argument(
+                                                LiteralExpression(
+                                                    SyntaxKind.StringLiteralExpression,
+                                                    Literal(listMetadataAttribute.freezeTag)
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
+                        ExpressionStatement(
+                            InvocationExpression( // 创建一个方法调用表达式  
+                                MemberAccessExpression( // 创建一个成员访问表达式（this.list.Add）  
+                                    SyntaxKind.SimpleMemberAccessExpression, // 使用点号访问  
+                                    ThisExpression(), // 访问当前实例的this  
+                                    IdentifierName($"{fieldName}.Remove") // 访问名为list的成员  
+                                ),
+                                ArgumentList( // 创建参数列表  
+                                    SingletonSeparatedList( // 单个参数列表  
+                                        Argument( // 创建一个参数表达式  
+                                            IdentifierName("a" + listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate()) // 引用参数i  
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        listMetadataAttribute.link
+                            ? ReturnStatement(
+                                ThisExpression()
+                            )
+                            : null!
+                    }.Where(v => v is not null).ToList()
+                )
+            );
     }
 }

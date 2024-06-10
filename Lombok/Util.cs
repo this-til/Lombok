@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -26,7 +27,7 @@ internal static class IncrementalGeneratorInitializationContextExtensions {
 
     private static void AddSources(SourceProductionContext context, GeneratorResult result) {
         if (result.IsValid) {
-            context.AddSource($"{result.TypeName}.{context.GetType()}.g.cs", result.Source);
+            context.AddSource($"{result.TypeName}.g.cs", result.Source);
         }
         else if (result.Diagnostic is not null) {
             context.ReportDiagnostic(result.Diagnostic);
@@ -426,6 +427,50 @@ internal static class SyntaxNodeExtensions {
         }
         return null; // 没有找到指定的注解  
     }
+
+    public static Dictionary<string, object> getAttributeArgumentsAsDictionary(this AttributeSyntax attribute) {
+        var dictionary = new Dictionary<string, object>();
+
+        if (attribute.ArgumentList != null) {
+            foreach (var argument in attribute.ArgumentList.Arguments) {
+                var key = argument.NameEquals?.Name.Identifier.ToString() ?? default;
+                var value = ExtractAttributeValue(argument.Expression);
+                dictionary.Add(key, value);
+            }
+        }
+
+        return dictionary;
+    }
+
+    public static string getHasGenericName(this ClassDeclarationSyntax classDeclarationSyntax) {
+        string className = classDeclarationSyntax.Identifier.ValueText;
+
+        if (classDeclarationSyntax.TypeParameterList is null) {
+            return className;
+        }
+
+        SeparatedSyntaxList<TypeParameterSyntax> typeParameters = classDeclarationSyntax.TypeParameterList.Parameters;
+
+        // 你可以遍历这些参数，或者将它们格式化为字符串  
+        string genericParameters = string.Join(", ", typeParameters.Select(tp => tp.Identifier.ValueText));
+
+        // 输出包含泛型参数的类名  
+        return $"{className}<{genericParameters}>";
+    }
+
+    static object ExtractAttributeValue(ExpressionSyntax expression) {
+        // 根据不同的 ExpressionSyntax 类型提取值  
+        switch (expression.Kind()) {
+            case SyntaxKind.TrueLiteralExpression:
+                return true;
+            case SyntaxKind.FalseLiteralExpression:
+                return false;
+            case SyntaxKind.StringLiteralExpression:
+                return ((LiteralExpressionSyntax)expression).Token.ValueText;
+            default:
+                return null;
+        }
+    }
 }
 
 /// <summary>
@@ -685,6 +730,11 @@ internal static class StringExtensions {
         }
 
         return identifier;
+    }
+
+    public static string genericEliminate(this string identifier) {
+        string pattern = @"<[^>]+>"; // 匹配 < 和 > 之间的任何内容（不包括这两个尖括号）  
+        return Regex.Replace(identifier, pattern, "");
     }
 
     /// <summary>

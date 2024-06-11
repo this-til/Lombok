@@ -259,7 +259,7 @@ public sealed class AddGenerator : ListAttributeGenerator {
 
 [Generator]
 public sealed class RemoveGenerator : ListAttributeGenerator {
-    public override string getAttributeName() => nameof(AddAttribute);
+    public override string getAttributeName() => nameof(RemoveAttribute);
 
     public override Func<string, string, string, ListMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateRemoveMethod;
 }
@@ -289,7 +289,7 @@ public sealed class PutGenerator : MapAttributeGenerator {
 public sealed class MapGetGenerator : MapAttributeGenerator {
     public override string getAttributeName() => nameof(MapGetAttribute);
 
-    public override Func<string, string, string, MapMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateConsultMethod;
+    public override Func<string, string, string, MapMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateMapGetMethod;
 }
 
 [Generator]
@@ -322,7 +322,7 @@ public sealed class ContainValueGenerator : MapAttributeGenerator {
 
 [Generator]
 public sealed class ForKeyGenerator : MapAttributeGenerator {
-    public override string getAttributeName() => nameof(ForKeyGenerator);
+    public override string getAttributeName() => nameof(ForKeyAttribute);
 
     public override Func<string, string, string, MapMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateForKeyMethod;
 }
@@ -507,9 +507,6 @@ public static class CreateMethodUtil {
                         listMetadataAttribute.noNull
                             ? noNull(fieldName, $"{parentName}.add{listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate()}In{fieldName.ToPascalCaseIdentifier().genericEliminate()}方法中传入参数为null")
                             : null!,
-                        listMetadataAttribute.noNull
-                            ? noNull(fieldName, $"{parentName}.{"set" + fieldName.ToPascalCaseIdentifier()}方法中传入参数为null")
-                            : null!,
                         ExpressionStatement(
                             InvocationExpression( // 创建一个方法调用表达式  
                                 MemberAccessExpression( // 创建一个成员访问表达式（this.list.Add）  
@@ -586,7 +583,7 @@ public static class CreateMethodUtil {
     public static MethodDeclarationSyntax CreateContainMethod(string fieldName, string typeName, string parentName, ListMetadataAttribute listMetadataAttribute) {
         return MethodDeclaration(
                 IdentifierName("bool"),
-                $"containIn{fieldName.ToPascalCaseIdentifier()}"
+                $"contaIn{fieldName.ToPascalCaseIdentifier()}"
             )
             .AddModifiers(Token(SyntaxKind.PublicKeyword))
             .AddParameterListParameters(Parameter(Identifier("a" + listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate())).WithType(ParseTypeName(listMetadataAttribute.type)))
@@ -753,7 +750,7 @@ public static class CreateMethodUtil {
             );
     }
 
-    public static MethodDeclarationSyntax CreateConsultMethod(string fieldName, string typeName, string parentName, MapMetadataAttribute mapMetadataAttribute) {
+    public static MethodDeclarationSyntax CreateMapGetMethod(string fieldName, string typeName, string parentName, MapMetadataAttribute mapMetadataAttribute) {
         return MethodDeclaration(
                 IdentifierName(mapMetadataAttribute.valueType),
                 $"getIn{fieldName}"
@@ -978,7 +975,7 @@ public static class CreateMethodUtil {
     public static MethodDeclarationSyntax CreateForKeyMethod(string fieldName, string typeName, string parentName, MapMetadataAttribute mapMetadataAttribute) {
         return MethodDeclaration(
                 IdentifierName($"IEnumerable<{mapMetadataAttribute.keyType}>"),
-                $"forKeyIn{fieldName.ToPascalCaseIdentifier()}"
+                $"for{fieldName.ToPascalCaseIdentifier()}Key"
             )
             .AddModifiers(Token(SyntaxKind.PublicKeyword))
             .WithBody(
@@ -1026,7 +1023,7 @@ public static class CreateMethodUtil {
     public static MethodDeclarationSyntax CreateForValueMethod(string fieldName, string typeName, string parentName, MapMetadataAttribute mapMetadataAttribute) {
         return MethodDeclaration(
                 IdentifierName($"IEnumerable<{mapMetadataAttribute.valueType}>"),
-                $"forKeyIn{fieldName.ToPascalCaseIdentifier()}"
+                $"for{fieldName.ToPascalCaseIdentifier()}Value"
             )
             .AddModifiers(Token(SyntaxKind.PublicKeyword))
             .WithBody(

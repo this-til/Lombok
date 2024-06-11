@@ -29,7 +29,7 @@ public class MetadataAttribute : Attribute {
         if (data.TryGetValue("link", out var link)) {
             attribute.link = link is not null && (bool)link;
         }
-        if (data.TryGetValue("link", out var noNull)) {
+        if (data.TryGetValue("noNull", out var noNull)) {
             attribute.noNull = noNull is not null && (bool)noNull;
         }
         if (data.TryGetValue("freezeTag", out var freezeTag)) {
@@ -54,6 +54,9 @@ public class ListMetadataAttribute : MetadataAttribute {
         var attribute = new ListMetadataAttribute();
         if (data.TryGetValue("link", out var link)) {
             attribute.link = link is not null && (bool)link;
+        }
+        if (data.TryGetValue("noNull", out var noNull)) {
+            attribute.noNull = noNull is not null && (bool)noNull;
         }
         if (data.TryGetValue("useYield", out var useYield)) {
             attribute.useYield = useYield is not null && (bool)useYield;

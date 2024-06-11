@@ -419,13 +419,15 @@ internal static class SyntaxNodeExtensions {
     }
 
     public static AttributeSyntax? tryGetSpecifiedAttribute(this IEnumerable<AttributeListSyntax> attributeLists, string attributeName) {
+        string noAttribute = attributeName;
+
         if (attributeName.EndsWith("Attribute")) {
-            attributeName = attributeName.Substring(0, attributeName.Length - 9);
+            noAttribute = attributeName.Substring(0, attributeName.Length - 9);
         }
 
         foreach (AttributeListSyntax attributeList in attributeLists) {
             foreach (AttributeSyntax attribute in attributeList.Attributes) {
-                if (attributeName.EndsWith(attribute.Name.ToString())) {
+                if (attributeName.Equals(attribute.Name.ToString()) || noAttribute.Equals(attribute.Name.ToString())) {
                     return attribute;
                 }
             }

@@ -8,10 +8,10 @@
         <Version>1.0.0</Version>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <Authors>Collin Alpert</Authors>
-        <Title>.NET adaptation for Java's Lombok using Source Generators.</Title>
-        <Description>This library is to .NET what Lombok is to Java. It generates constructors and other fun stuff using Source Generators for those classes you specify special attributes for.</Description>
+        <Title>由于作者太懒了专门开发的代码生成器</Title>
+        <Description>相比于Lombok.NET开发了更多功能</Description>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <!--<PackageProjectUrl>https://github.com/CollinAlpert/Lombok.NET</PackageProjectUrl>-->
+        <PackageProjectUrl>https://github.com/this-til/Lombok</PackageProjectUrl>
         <PackageTags>lombok dotnet source-generators roslyn</PackageTags>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <Copyright>2024 © til</Copyright>

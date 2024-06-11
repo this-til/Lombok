@@ -7,6 +7,7 @@ namespace Lombok.Test;
 [ILombok]
 [IFreeze]
 public partial class Data {
+    /*
     [Get] private int a;
     [Set] private int b;
     [Get] [Set(link = true)] private int c;
@@ -21,28 +22,29 @@ public partial class Data {
     [Set(link = true, freezeTag = "some time")]
     private int y { get; set; }
 
-    [Get] [Index] [Set] [Add] [Remove] [Contain]
+    [Get] [Index] [Set] [Add] [Remove] [Contain] [For]
     public List<int> list;
 
-    [Get] [Index] [Set] [Add] [Remove] [Contain]
+    [Get] [Index] [Set] [Add] [Remove] [Contain] [For(useYield = true)]
     public List<List<int>> twoList;
+    */
 
-    public int aa(int i) {
-        return list[i];
-    }
+    [Get] [Set] [Put] [MapGet] [RemoveKey]  [ContainKey] [ContainValue] [ForKey] [ForValue] [ForAll]
+    public Dictionary<string, string> map = new Dictionary<string, string>();
 }
 
+/*
 [ILombok]
 [IFreeze]
 public partial class GT<T> {
     [Get] [Set(link = true)] private int a;
 }
+*/
 
 public class Test {
     [Fact]
     public static void a() {
         Data data = new Data();
-        data.addIntInList(5641230);
     }
 }
 

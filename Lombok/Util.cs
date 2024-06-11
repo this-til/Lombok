@@ -419,11 +419,16 @@ internal static class SyntaxNodeExtensions {
     }
 
     public static AttributeSyntax? tryGetSpecifiedAttribute(this IEnumerable<AttributeListSyntax> attributeLists, string attributeName) {
+        if (attributeName.EndsWith("Attribute")) {
+            attributeName = attributeName.Substring(0, attributeName.Length - 9);
+        }
+
         foreach (AttributeListSyntax attributeList in attributeLists) {
-            foreach (AttributeSyntax attribute in attributeList.Attributes)
-                if (attributeName.StartsWith(attribute.Name.ToString())) {
+            foreach (AttributeSyntax attribute in attributeList.Attributes) {
+                if (attributeName.EndsWith(attribute.Name.ToString())) {
                     return attribute;
                 }
+            }
         }
         return null; // 没有找到指定的注解  
     }

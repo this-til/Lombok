@@ -24,8 +24,6 @@ public class MetadataAttribute : Attribute {
     /// </summary>
     public string freezeTag;
 
-    public string type;
-
     public static MetadataAttribute of(Dictionary<string, object?> data) {
         var attribute = new MetadataAttribute();
         if (data.TryGetValue("link", out var link)) {
@@ -47,10 +45,18 @@ public class ListMetadataAttribute : MetadataAttribute {
     /// </summary>
     public string type;
 
+    /// <summary>
+    /// 在for中指定是否使用yield
+    /// </summary>
+    public bool useYield;
+
     public static ListMetadataAttribute of(Dictionary<string, object?> data) {
         var attribute = new ListMetadataAttribute();
         if (data.TryGetValue("link", out var link)) {
             attribute.link = link is not null && (bool)link;
+        }
+        if (data.TryGetValue("useYield", out var useYield)) {
+            attribute.useYield = useYield is not null && (bool)useYield;
         }
         if (data.TryGetValue("freezeTag", out var freezeTag)) {
             attribute.freezeTag = freezeTag?.ToString() ?? string.Empty;
@@ -73,6 +79,12 @@ public class MapMetadataAttribute : MetadataAttribute {
     /// </summary>
     public string valueType;
 
+    /// <summary>
+    /// 在for中指定是否使用yield
+    /// </summary>
+    public bool useYield;
+
+    
     public static MapMetadataAttribute of(Dictionary<string, object?> data) {
         var attribute = new MapMetadataAttribute();
         if (data.TryGetValue("link", out var link)) {
@@ -81,11 +93,14 @@ public class MapMetadataAttribute : MetadataAttribute {
         if (data.TryGetValue("freezeTag", out var freezeTag)) {
             attribute.freezeTag = freezeTag?.ToString() ?? string.Empty;
         }
+        if (data.TryGetValue("useYield", out var useYield)) {
+            attribute.useYield = useYield is not null && (bool)useYield;
+        }
         if (data.TryGetValue("keyType", out var keyType)) {
             attribute.keyType = keyType?.ToString() ?? string.Empty;
         }
         if (data.TryGetValue("valueType", out var valueType)) {
-            attribute.keyType = keyType?.ToString() ?? string.Empty;
+            attribute.valueType = valueType?.ToString() ?? string.Empty;
         }
         return attribute;
     }
@@ -113,4 +128,48 @@ public class IndexAttribute : ListMetadataAttribute {
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
 public class ContainAttribute : ListMetadataAttribute {
+}
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class ForAttribute : ListMetadataAttribute {
+}
+
+//------------------------------------------------------------------------------------
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class PutAttribute : MapMetadataAttribute {
+}
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class MapGetAttribute : MapMetadataAttribute {
+}
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class RemoveKeyAttribute : MapMetadataAttribute {
+}
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class RemoveValueAttribute : MapMetadataAttribute {
+}
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class ContainKeyAttribute : MapMetadataAttribute {
+}
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class ContainValueAttribute : MapMetadataAttribute {
+}
+
+
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class ForKeyAttribute : MapMetadataAttribute {
+}
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class ForValueAttribute : MapMetadataAttribute {
+}
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class ForAllAttribute : MapMetadataAttribute {
 }

@@ -5,18 +5,22 @@
         <LangVersion>11</LangVersion>
         <Nullable>enable</Nullable>
         <PackageId>Til.Lombok</PackageId>
-        <Version>1.0.0</Version>
+        <Version>1.0.3</Version>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <Authors>Collin Alpert</Authors>
         <Title>由于作者太懒了专门开发的代码生成器</Title>
         <Description>相比于Lombok.NET开发了更多功能</Description>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/this-til/Lombok</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/this-til/Lombok</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
         <PackageTags>lombok dotnet source-generators roslyn</PackageTags>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <Copyright>2024 © til</Copyright>
+        <language>zh-CN</language>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <EnablePackageValidation>true</EnablePackageValidation>
         <NoWarn>RS2008</NoWarn>
     </PropertyGroup>
 

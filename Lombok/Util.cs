@@ -192,6 +192,28 @@ internal static class SyntaxNodeExtensions {
         return declaration;
     }
 
+    public static string toClassName(this BaseTypeDeclarationSyntax baseTypeDeclarationSyntax) {
+        if (baseTypeDeclarationSyntax is not TypeDeclarationSyntax typeDeclarationSyntax) {
+            return baseTypeDeclarationSyntax.Identifier.Text;
+        }
+        TypeParameterListSyntax? typeParameterList = typeDeclarationSyntax.TypeParameterList;
+        if (typeParameterList == null) {
+            return baseTypeDeclarationSyntax.Identifier.Text;
+        }
+        return $"{baseTypeDeclarationSyntax.Identifier.Text}<{typeParameterList.Parameters.ToString()}>";
+    }
+
+    public static string toFileName(this BaseTypeDeclarationSyntax baseTypeDeclarationSyntax) {
+        if (baseTypeDeclarationSyntax is not TypeDeclarationSyntax typeDeclarationSyntax) {
+            return baseTypeDeclarationSyntax.Identifier.Text;
+        }
+        TypeParameterListSyntax? typeParameterList = typeDeclarationSyntax.TypeParameterList;
+        if (typeParameterList == null) {
+            return baseTypeDeclarationSyntax.Identifier.Text;
+        }
+        return $"{baseTypeDeclarationSyntax.Identifier.Text}<{typeParameterList.Parameters.ToString()}>".Replace("<", "_").Replace(">", "_").Replace(",", "_");
+    }
+
     /// <summary>
     /// Constructs a new partial struct from the original type's name, accessibility and type arguments.
     /// </summary>
@@ -356,7 +378,7 @@ internal static class SyntaxNodeExtensions {
     /// <param name="namespace">The namespace which will be prepended to the type using underscores.</param>
     /// <returns>A unique name for the type inside a generator context.</returns>
     public static string GetHintName(this BaseTypeDeclarationSyntax type, NameSyntax @namespace) {
-        return string.Concat(@namespace.ToString().Replace('.', '_'), '_', type.Identifier.Text);
+        return string.Concat(@namespace.ToString().Replace('.', '_'), '_', type.toFileName());
     }
 
     /// <summary>
@@ -435,13 +457,13 @@ internal static class SyntaxNodeExtensions {
         return null; // 没有找到指定的注解  
     }
 
-    public static Dictionary<string, object> getAttributeArgumentsAsDictionary(this AttributeSyntax attribute) {
+    public static Dictionary<string, object> getAttributeArgumentsAsDictionary(this AttributeSyntax attribute, SemanticModel semanticModel) {
         var dictionary = new Dictionary<string, object>();
 
         if (attribute.ArgumentList != null) {
             foreach (var argument in attribute.ArgumentList.Arguments) {
                 var key = argument.NameEquals?.Name.Identifier.ToString() ?? default;
-                var value = ExtractAttributeValue(argument.Expression);
+                var value = ExtractAttributeValue(argument.Expression, semanticModel);
                 dictionary.Add(key, value);
             }
         }
@@ -465,18 +487,35 @@ internal static class SyntaxNodeExtensions {
         return $"{className}<{genericParameters}>";
     }
 
-    static object ExtractAttributeValue(ExpressionSyntax expression) {
-        // 根据不同的 ExpressionSyntax 类型提取值  
-        switch (expression.Kind()) {
-            case SyntaxKind.TrueLiteralExpression:
-                return true;
-            case SyntaxKind.FalseLiteralExpression:
-                return false;
-            case SyntaxKind.StringLiteralExpression:
-                return ((LiteralExpressionSyntax)expression).Token.ValueText;
-            default:
-                return null;
+    static object ExtractAttributeValue(ExpressionSyntax expression, SemanticModel semanticModel) {
+        // 如果是成员访问表达式（如ConstString.metadata）  
+        if (expression is MemberAccessExpressionSyntax memberAccess) {
+            // 获取成员访问的符号信息  
+            ISymbol symbol = semanticModel.GetSymbolInfo(memberAccess).Symbol;
+
+            // 如果符号是常量，则尝试获取其值  
+            if (symbol is IFieldSymbol fieldSymbol && fieldSymbol.HasConstantValue) {
+                return fieldSymbol.ConstantValue;
+            }
+
+            // 对于其他类型的成员（如属性或方法），你可能需要额外的逻辑  
         }
+        else if (expression is LiteralExpressionSyntax literal) // 处理字面量表达式  
+        {
+            switch (literal.Kind()) {
+                case SyntaxKind.TrueLiteralExpression:
+                    return true;
+                case SyntaxKind.FalseLiteralExpression:
+                    return false;
+                case SyntaxKind.NumericLiteralExpression:
+                case SyntaxKind.StringLiteralExpression:
+                    return literal.Token.Value; // 对于数字和字符串，直接返回Token.Value  
+                // ... 可以添加其他类型的字面量处理  
+            }
+        }
+
+        // 对于其他类型的表达式，返回null  
+        return null;
     }
 }
 

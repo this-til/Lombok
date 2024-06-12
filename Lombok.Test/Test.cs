@@ -116,6 +116,37 @@ public partial class Demo14 {
     public Dictionary<Dictionary<string, string>, Dictionary<string, string>> twoMap = new Dictionary<Dictionary<string, string>, Dictionary<string, string>>();
 }
 
+[ILombok]
+[IFreeze]
+public partial class Demo15 {
+    [Get(freezeTag = CS.aabb)] public int a;
+}
+
+[ILombok]
+[IFreeze]
+public partial class Demo16<T> {
+    [Get] [Set] public T t;
+}
+
+[ILombok]
+[IFreeze]
+public partial class Demo16<T, V> {
+    [Get] [Set] public T t;
+    [Get] [Set] public V v;
+}
+
+/*
+[ILombok]
+[IFreeze]
+public partial class Demo16 {
+    [Get(freezeTag = CS.aabb)] public int a;
+}
+*/
+
+public class CS {
+    public const string aabb = "aabb";
+}
+
 /*
 [ILombok]
 [IFreeze]

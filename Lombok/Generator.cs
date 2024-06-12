@@ -25,6 +25,8 @@ public abstract class GeneratorBasics : IIncrementalGenerator {
     private GeneratorResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken) {
         ClassDeclarationSyntax contextTargetNode = (ClassDeclarationSyntax)context.TargetNode;
 
+        SemanticModel semanticModel = context.SemanticModel;
+
         if (!contextTargetNode.TryValidateType(out var @namespace, out var diagnostic)) {
             return new GeneratorResult(diagnostic);
         }
@@ -35,7 +37,7 @@ public abstract class GeneratorBasics : IIncrementalGenerator {
             switch (member) {
                 // 检查成员是否是字段或属性  
                 case FieldDeclarationSyntax fieldDeclaration: {
-                    foreach (MethodDeclarationSyntax methodDeclarationSyntax in onFieldDeclarationSyntax(fieldDeclaration)) {
+                    foreach (MethodDeclarationSyntax methodDeclarationSyntax in onFieldDeclarationSyntax(fieldDeclaration, semanticModel)) {
                         try {
                             methodDeclarationSyntaxes.Add(methodDeclarationSyntax);
                         }
@@ -46,7 +48,7 @@ public abstract class GeneratorBasics : IIncrementalGenerator {
                     break;
                 }
                 case PropertyDeclarationSyntax propertyDeclaration: {
-                    foreach (MethodDeclarationSyntax methodDeclarationSyntax in onPropertyDeclarationSyntax(propertyDeclaration)) {
+                    foreach (MethodDeclarationSyntax methodDeclarationSyntax in onPropertyDeclarationSyntax(propertyDeclaration, semanticModel)) {
                         try {
                             methodDeclarationSyntaxes.Add(methodDeclarationSyntax);
                         }
@@ -66,9 +68,9 @@ public abstract class GeneratorBasics : IIncrementalGenerator {
         return new GeneratorResult(contextTargetNode.GetHintName(@namespace), CreateMethodUtil.CreatePartialClass(@namespace, contextTargetNode, methodDeclarationSyntaxes));
     }
 
-    public abstract IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax);
+    public abstract IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax, SemanticModel semanticModel);
 
-    public abstract IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax);
+    public abstract IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax, SemanticModel semanticModel);
 }
 
 [Generator]
@@ -91,10 +93,11 @@ public sealed class FreezeGenerator : IIncrementalGenerator {
 
         string model = $"""
                         using System.Collections.Generic;
+                        using System;
 
                         namespace {@namespace.ToString()} {'{'}
                         
-                            public partial class {contextTargetNode.Identifier.ToString()} {'{'}
+                            public partial class {contextTargetNode.toClassName()} {'{'}
                                 protected Dictionary<string, bool> _frozen = new Dictionary<string, bool>();
                             
                                 public bool isFrozen(string tag) {'{'}
@@ -135,23 +138,23 @@ public abstract class AttributeGenerator : GeneratorBasics {
 
     public abstract IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data);
 
-    public override IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax) {
+    public override IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax, SemanticModel semanticModel) {
         AttributeSyntax? tryGetSpecifiedAttribute = fieldDeclarationSyntax.AttributeLists.tryGetSpecifiedAttribute(getAttributeName());
 
         if (tryGetSpecifiedAttribute is null) {
             return Array.Empty<MethodDeclarationSyntax>();
         }
-        return onFieldDeclarationSyntax(fieldDeclarationSyntax, tryGetSpecifiedAttribute, tryGetSpecifiedAttribute.getAttributeArgumentsAsDictionary());
+        return onFieldDeclarationSyntax(fieldDeclarationSyntax, tryGetSpecifiedAttribute, tryGetSpecifiedAttribute.getAttributeArgumentsAsDictionary(semanticModel));
     }
 
-    public override IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax) {
+    public override IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(PropertyDeclarationSyntax propertyDeclarationSyntax, SemanticModel semanticModel) {
         AttributeSyntax? tryGetSpecifiedAttribute = propertyDeclarationSyntax.AttributeLists.tryGetSpecifiedAttribute(getAttributeName());
 
         if (tryGetSpecifiedAttribute is null) {
             return Array.Empty<MethodDeclarationSyntax>();
         }
 
-        return onPropertyDeclarationSyntax(propertyDeclarationSyntax, tryGetSpecifiedAttribute, tryGetSpecifiedAttribute.getAttributeArgumentsAsDictionary());
+        return onPropertyDeclarationSyntax(propertyDeclarationSyntax, tryGetSpecifiedAttribute, tryGetSpecifiedAttribute.getAttributeArgumentsAsDictionary(semanticModel));
     }
 }
 
@@ -211,12 +214,12 @@ public abstract class MapAttributeGenerator : StandardAttributeGenerator<MapMeta
     public override Func<Dictionary<string, object>, ClassDeclarationSyntax, TypeSyntax, MapMetadataAttribute> of() => (d, c, t) => {
         MapMetadataAttribute mapMetadataAttribute = MapMetadataAttribute.of(d);
         if (t is GenericNameSyntax genericNameSyntax) {
-            if (mapMetadataAttribute.keyType is null) {
+            if (mapMetadataAttribute.keyType is null && genericNameSyntax.TypeArgumentList.Arguments.Count > 0) {
                 TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
                 mapMetadataAttribute.keyType = firstOrDefault?.ToFullString();
             }
-            if (mapMetadataAttribute.valueType is null) {
-                TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
+            if (mapMetadataAttribute.valueType is null && genericNameSyntax.TypeArgumentList.Arguments.Count > 1) {
+                TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments[1];
                 mapMetadataAttribute.valueType = firstOrDefault?.ToFullString();
             }
         }
@@ -382,7 +385,15 @@ public static class CreateMethodUtil {
             InvocationExpression(
                 MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName(nameof(Util)),
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(nameof(Til)),
+                            IdentifierName(nameof(Lombok))
+                        ),
+                        IdentifierName(nameof(Util))
+                    ),
                     IdentifierName(nameof(Util.noNull)) // 方法名  
                 ),
                 ArgumentList( // 创建参数列表  
@@ -440,7 +451,7 @@ public static class CreateMethodUtil {
                     new StatementSyntax[] {
                         validateNonFrozen(metadataAttribute.freezeTag)!,
                         metadataAttribute.noNull
-                            ? noNull(fieldName, $"{parentName}.{"set" + fieldName.ToPascalCaseIdentifier()}方法中传入参数为null")
+                            ? noNull(fieldName.ToCamelCaseIdentifier().genericEliminate(), $"{parentName}.{"set" + fieldName.ToPascalCaseIdentifier()}方法中传入参数为null")
                             : null!,
                         ExpressionStatement(
                             AssignmentExpression(
@@ -450,7 +461,7 @@ public static class CreateMethodUtil {
                                     ThisExpression(),
                                     IdentifierName(fieldName)
                                 ),
-                                IdentifierName(fieldName)
+                                IdentifierName(fieldName.ToCamelCaseIdentifier().genericEliminate())
                             )
                         ),
                         metadataAttribute.link
@@ -505,7 +516,9 @@ public static class CreateMethodUtil {
                     new StatementSyntax[] {
                         validateNonFrozen(listMetadataAttribute.freezeTag)!,
                         listMetadataAttribute.noNull
-                            ? noNull(fieldName, $"{parentName}.add{listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate()}In{fieldName.ToPascalCaseIdentifier().genericEliminate()}方法中传入参数为null")
+                            ? noNull(
+                                "a" + listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate(),
+                                $"{parentName}.add{listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate()}In{fieldName.ToPascalCaseIdentifier().genericEliminate()}方法中传入参数为null")
                             : null!,
                         ExpressionStatement(
                             InvocationExpression( // 创建一个方法调用表达式  

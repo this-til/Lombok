@@ -1,8 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using Til.Lombok;
 using Xunit;
 
-namespace Lombok.Test;
+namespace Til.Lombok.Test;
 
 [ILombok] // 引入注释才能被扫描到类
 public partial class Demo1 {

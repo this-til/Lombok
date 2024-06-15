@@ -93,11 +93,12 @@ public sealed class FreezeGenerator : IIncrementalGenerator {
 
         string model = $"""
                         using System.Collections.Generic;
+                        using Til.Lombok;
                         using System;
 
                         namespace {@namespace.ToString()} {'{'}
                         
-                            public partial class {contextTargetNode.toClassName()} {'{'}
+                            public partial class {contextTargetNode.toClassName()} : IFreeze {'{'}
                                 protected Dictionary<string, bool> _frozen = new Dictionary<string, bool>();
                             
                                 public bool isFrozen(string tag) {'{'}

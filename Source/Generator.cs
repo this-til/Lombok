@@ -767,7 +767,7 @@ public static class CreateMethodUtil {
     public static MethodDeclarationSyntax CreateMapGetMethod(string fieldName, string typeName, string parentName, MapMetadataAttribute mapMetadataAttribute) {
         return MethodDeclaration(
                 IdentifierName(mapMetadataAttribute.valueType),
-                $"getIn{fieldName}"
+                $"getIn{fieldName.ToPascalCaseIdentifier()}"
             )
             .AddModifiers(Token(SyntaxKind.PublicKeyword))
             .AddParameterListParameters(

@@ -133,6 +133,111 @@ public sealed class FreezeGenerator : IIncrementalGenerator {
     }
 }
 
+[Generator]
+public class IPackGenerator : IIncrementalGenerator {
+    private static readonly string AttributeName = typeof(IPackAttribute).FullName!;
+
+    public void Initialize(IncrementalGeneratorInitializationContext context) {
+        var sources = context.SyntaxProvider.ForAttributeWithMetadataName(AttributeName, IsCandidate, Transform);
+
+        context.AddSources(sources);
+    }
+
+    private bool IsCandidate(SyntaxNode node, CancellationToken cancellationToken) => node is ClassDeclarationSyntax;
+
+    private GeneratorResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken) {
+        ClassDeclarationSyntax contextTargetNode = (ClassDeclarationSyntax)context.TargetNode;
+
+        SemanticModel semanticModel = context.SemanticModel;
+
+        if (!contextTargetNode.TryValidateType(out var @namespace, out var diagnostic)) {
+            return new GeneratorResult(diagnostic!);
+        }
+
+        string model = $"""
+                        using System;
+                        using System.Collections.Generic; 
+                        using Til.Lombok;
+
+                        namespace {@namespace!.ToString()};
+
+                        public partial class {contextTargetNode.toClassName()} : IPack {'{'}
+                            protected IDictionary<string, object>? _pack;
+                            
+                            public IDictionary<string, object> pack() => pack(false);
+                            
+                            public IDictionary<string, object> pack(bool updates = false) {'{'}
+                                if (updates) {'{'}
+                                    _pack = null;
+                                {'}'}
+                                _pack ??= Util.pack(this);
+                                return _pack!;
+                            {'}'}
+                            
+                            
+                            
+                        {'}'}
+                        """;
+
+        return new GeneratorResult(
+            contextTargetNode.GetHintName(@namespace),
+            SourceText.From(model, Encoding.UTF8)
+        );
+    }
+}
+
+[Generator]
+public class SelfGenerator : IIncrementalGenerator {
+    private static readonly string AttributeName = typeof(ISelfAttribute).FullName!;
+
+    public void Initialize(IncrementalGeneratorInitializationContext context) {
+        var sources = context.SyntaxProvider.ForAttributeWithMetadataName(AttributeName, IsCandidate, Transform);
+
+        context.AddSources(sources);
+    }
+
+    private bool IsCandidate(SyntaxNode node, CancellationToken cancellationToken) => node is ClassDeclarationSyntax;
+
+    private GeneratorResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken) {
+        ClassDeclarationSyntax contextTargetNode = (ClassDeclarationSyntax)context.TargetNode;
+
+        SemanticModel semanticModel = context.SemanticModel;
+
+        if (!contextTargetNode.TryValidateType(out var @namespace, out var diagnostic)) {
+            return new GeneratorResult(diagnostic!);
+        }
+
+        AttributeSyntax? tryGetSpecifiedAttribute = contextTargetNode.AttributeLists.tryGetSpecifiedAttribute(nameof(ISelfAttribute));
+        if (tryGetSpecifiedAttribute is null) {
+            return GeneratorResult.Empty;
+        }
+
+        ISelfAttribute selfAttribute = ISelfAttribute.of(tryGetSpecifiedAttribute.getAttributeArgumentsAsDictionary(semanticModel)!);
+        string instantiation = selfAttribute.instantiation is not null ? String.Format(selfAttribute.instantiation, contextTargetNode.toClassName()) : $"new {contextTargetNode.toClassName}()";
+
+        string model = $"""
+                        using System;
+                        using Til.Lombok;
+
+                        namespace {@namespace!.ToString()};
+
+                        public partial class {contextTargetNode.toClassName()} {'{'}
+                            protected static {contextTargetNode.toClassName()} instance;
+                        
+                            public static {contextTargetNode.toClassName()} getInstance() {'{'}
+                                instance ??= ({contextTargetNode.toClassName()}) {instantiation}!;
+                                return instance;
+                            {'}'}
+                        {'}'}
+                        """;
+
+        return new GeneratorResult(
+            contextTargetNode.GetHintName(@namespace),
+            SourceText.From(model, Encoding.UTF8)
+        );
+    }
+}
+
 public abstract class AttributeGenerator : GeneratorBasics {
     public abstract string getAttributeName();
     public abstract IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(FieldDeclarationSyntax fieldDeclarationSyntax, AttributeSyntax attributeSyntax, Dictionary<string, object> data);
@@ -236,6 +341,20 @@ public sealed class GetGenerator : MetadataAttributeGenerator {
     public override string getAttributeName() => nameof(GetAttribute);
 
     public override Func<string, string, string, MetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateGetMethod;
+}
+
+[Generator]
+public sealed class IsGenerator : MetadataAttributeGenerator {
+    public override string getAttributeName() => nameof(IsAttribute);
+
+    public override Func<string, string, string, MetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateIsMethod;
+}
+
+[Generator]
+public sealed class OpenGenerator : MetadataAttributeGenerator {
+    public override string getAttributeName() => nameof(OpenAttribute);
+
+    public override Func<string, string, string, MetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateOpenMethod;
 }
 
 [Generator]
@@ -433,6 +552,80 @@ public static class CreateMethodUtil {
                                 IdentifierName(fieldName)
                             )
                         )
+                    }.Where(v => v is not null).ToList()
+                )
+            );
+    }
+
+    public static MethodDeclarationSyntax CreateIsMethod(string fieldName, string typeName, string parentName, MetadataAttribute metadataAttribute) {
+        return MethodDeclaration(
+                IdentifierName(typeName),
+                "is" + fieldName.ToPascalCaseIdentifier()
+            )
+            .AddModifiers(Token(SyntaxKind.PublicKeyword))
+            .WithBody(
+                Block(
+                    new List<StatementSyntax>() {
+                        validateNonFrozen(metadataAttribute.freezeTag)!,
+
+                        ReturnStatement(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                ThisExpression(),
+                                IdentifierName(fieldName)
+                            )
+                        )
+                    }.Where(v => v is not null).ToList()
+                )
+            );
+    }
+
+    public static MethodDeclarationSyntax CreateOpenMethod(string fieldName, string typeName, string parentName, MetadataAttribute metadataAttribute) {
+        return MethodDeclaration(
+                metadataAttribute.link
+                    ? IdentifierName(parentName)
+                    : IdentifierName("void"),
+                "is" + fieldName.ToPascalCaseIdentifier()
+            )
+            .AddModifiers(Token(SyntaxKind.PublicKeyword))
+            .AddParameterListParameters(Parameter(Identifier("action")).WithType(ParseTypeName($"Action<{typeName}>")))
+            .WithBody(
+                Block(
+                    new List<StatementSyntax>() {
+                        validateNonFrozen(metadataAttribute.freezeTag)!,
+                        ExpressionStatement(
+                            InvocationExpression(
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression, // 使用点号访问  ,
+                                    IdentifierName("action"),
+                                    IdentifierName("Invoke")
+                                ),
+                                ArgumentList( // 创建参数列表  
+                                    SingletonSeparatedList( // 单个参数列表  
+                                        Argument( // 创建一个参数表达式  
+                                            MemberAccessExpression(
+                                                SyntaxKind.SimpleMemberAccessExpression, // 使用点号访问  ,
+                                                ThisExpression(),
+                                                IdentifierName(fieldName)
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+                        metadataAttribute.link
+                            ? ReturnStatement(
+                                ThisExpression()
+                            )
+                            : null!
+
+                        /*ReturnStatement(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                ThisExpression(),
+                                IdentifierName(fieldName)
+                            )
+                        )*/
                     }.Where(v => v is not null).ToList()
                 )
             );

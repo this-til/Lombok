@@ -134,6 +134,39 @@ public partial class Demo16<T, V> {
     [Get] [Set] public V v;
 }
 
+[ILombok]
+public partial class Demo17 {
+    [Is] protected bool a;
+}
+
+[ILombok]
+public partial class Demo18 {
+    [Open] public object a;
+}
+
+/*
+[ILombok]
+[ISelf]
+public partial class Demo19 {
+}
+
+[ILombok]
+[ISelf]
+public partial class Demo19_2 {
+}
+*/
+
+
+[ILombok]
+[ISelf(instantiation = "Demo20.of()")]
+public partial class Demo20 {
+    public static Demo20 of() => new Demo20();
+}
+
+[ILombok]
+[IPack]
+public partial class Demo21 {
+}
 /*
 [ILombok]
 [IFreeze]

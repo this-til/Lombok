@@ -50,7 +50,7 @@ public class ListMetadataAttribute : MetadataAttribute {
     /// </summary>
     public bool useYield;
 
-    public static ListMetadataAttribute of(Dictionary<string, object?> data) {
+    public new static ListMetadataAttribute of(Dictionary<string, object?> data) {
         var attribute = new ListMetadataAttribute();
         if (data.TryGetValue("link", out var link)) {
             attribute.link = link is not null && (bool)link;
@@ -87,8 +87,7 @@ public class MapMetadataAttribute : MetadataAttribute {
     /// </summary>
     public bool useYield;
 
-    
-    public static MapMetadataAttribute of(Dictionary<string, object?> data) {
+    public new static MapMetadataAttribute of(Dictionary<string, object?> data) {
         var attribute = new MapMetadataAttribute();
         if (data.TryGetValue("link", out var link)) {
             attribute.link = link is not null && (bool)link;
@@ -111,6 +110,14 @@ public class MapMetadataAttribute : MetadataAttribute {
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
 public class GetAttribute : MetadataAttribute {
+}
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class IsAttribute : MetadataAttribute {
+}
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class OpenAttribute : MetadataAttribute {
 }
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
@@ -163,8 +170,6 @@ public class ContainKeyAttribute : MapMetadataAttribute {
 public class ContainValueAttribute : MapMetadataAttribute {
 }
 
-
-
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
 public class ForKeyAttribute : MapMetadataAttribute {
 }
@@ -175,4 +180,27 @@ public class ForValueAttribute : MapMetadataAttribute {
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
 public class ForAllAttribute : MapMetadataAttribute {
+}
+
+[AttributeUsage(AttributeTargets.Class)]
+public class ISelfAttribute : Attribute {
+    public string? instantiation;
+    public static ISelfAttribute of(Dictionary<string, object?> data) {
+        var attribute = new ISelfAttribute();
+       
+        if (data.TryGetValue("instantiation", out var instantiation)) {
+            attribute.instantiation = instantiation!.ToString();
+        }
+   
+        return attribute;
+    }
+    
+}
+
+[AttributeUsage(AttributeTargets.Class)]
+public class IPackAttribute : Attribute {
+}
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class PackField : Attribute {
 }

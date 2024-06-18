@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -457,6 +458,12 @@ public static class SyntaxNodeExtensions {
         return null; // 没有找到指定的注解  
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="attribute"></param>
+    /// <param name="semanticModel"></param>
+    /// <returns></returns>
     public static Dictionary<string, object> getAttributeArgumentsAsDictionary(this AttributeSyntax attribute, SemanticModel semanticModel) {
         var dictionary = new Dictionary<string, object>();
 
@@ -816,4 +823,24 @@ public static class Util {
             throw new NullReferenceException(message);
         }
     }
+    
+    public static IDictionary<string, object> pack<T>(this T t) where T : class {
+        IDictionary<string, object> dictionary = new Dictionary<string, object>();
+
+        foreach (FieldInfo fieldInfo in t.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
+            if (fieldInfo.GetCustomAttribute<PackField>() is null) {
+                continue;
+            }
+            dictionary.Add(fieldInfo.Name, fieldInfo.GetValue(t)!);
+        }
+
+        foreach (PropertyInfo propertyInfo in t.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
+            if (propertyInfo.GetCustomAttribute<PackField>() is null) {
+                continue;
+            }
+            dictionary.Add(propertyInfo.Name, propertyInfo.GetValue(t)!);
+        }
+        return dictionary;
+    }
+    
 }

@@ -1,4 +1,6 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Xunit;
 
 namespace Til.Lombok.Test;
@@ -144,6 +146,23 @@ public partial class Demo18 {
     [Open] public object a;
 }
 
+[ILombok]
+public partial class demo19 {
+    [Set(updateField = true)] public object upTest;
+
+    protected void updateUpTest(object old, object @new) {
+    }
+}
+
+[ILombok]
+public partial class demo20 {
+    [Set(updateField = true)] [Add(updateField = true)]
+    public List<object> upTest;
+
+    protected void updateUpTest(object old, object @new) {
+    }
+}
+
 /*
 [ILombok]
 [ISelf]
@@ -156,7 +175,6 @@ public partial class Demo19_2 {
 }
 */
 
-
 [ILombok]
 [ISelf(instantiation = "Demo20.of()")]
 public partial class Demo20 {
@@ -166,6 +184,25 @@ public partial class Demo20 {
 [ILombok]
 [IPack]
 public partial class Demo21 {
+}
+
+
+[IPartial(model = """
+                  using System;
+                  using Til.Lombok;
+                  
+                  namespace {namespace};
+                  
+                  public partial class {type} {{
+                      protected static {type} instance;
+                  
+                      public static {type} getInstance() {{
+                          instance ??= new {type}();
+                          return instance;
+                      }}
+                  }}
+                  """)]
+public partial class Demo22 {
 }
 /*
 [ILombok]
@@ -217,11 +254,7 @@ public partial class GT<T> {
 }
 */
 
-public class Test {
-    [Fact]
-    public static void a() {
-    }
-}
+
 
 public partial class Model {
     protected Dictionary<string, bool> _frozen = new Dictionary<string, bool>();

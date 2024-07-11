@@ -159,23 +159,22 @@ public class IPackGenerator : IIncrementalGenerator {
                         using System.Collections.Generic; 
                         using Til.Lombok;
 
-                        namespace {@namespace!.ToString()};
-
-                        public partial class {contextTargetNode.toClassName()} : IPack {'{'}
-                            protected IDictionary<string, object>? _pack;
-                            
-                            public IDictionary<string, object> pack() => pack(false);
-                            
-                            public IDictionary<string, object> pack(bool updates = false) {'{'}
-                                if (updates) {'{'}
-                                    _pack = null;
+                        namespace {@namespace!.ToString()} {'{'}
+                        
+                            public partial class {contextTargetNode.toClassName()} : IPack {'{'}
+                                protected IDictionary<string, object>? _pack;
+                                
+                                public IDictionary<string, object> pack() => pack(false);
+                                
+                                public IDictionary<string, object> pack(bool updates = false) {'{'}
+                                    if (updates) {'{'}
+                                        _pack = null;
+                                    {'}'}
+                                    _pack ??= Util.pack(this);
+                                    return _pack!;
                                 {'}'}
-                                _pack ??= Util.pack(this);
-                                return _pack!;
                             {'}'}
-                            
-                            
-                            
+                        
                         {'}'}
                         """;
 
@@ -234,6 +233,53 @@ public class SelfGenerator : IIncrementalGenerator {
         return new GeneratorResult(
             contextTargetNode.GetHintName(@namespace),
             SourceText.From(model, Encoding.UTF8)
+        );
+    }
+}
+
+[Generator]
+public sealed class PartialGenerator : IIncrementalGenerator {
+    private static readonly string AttributeName = typeof(IPartialAttribute).FullName!;
+
+    public void Initialize(IncrementalGeneratorInitializationContext context) {
+        Console.WriteLine( Environment.CurrentDirectory);
+        var sources = context.SyntaxProvider.ForAttributeWithMetadataName(AttributeName, IsCandidate, Transform);
+        context.AddSources(sources);
+    }
+
+    private bool IsCandidate(SyntaxNode node, CancellationToken cancellationToken) => node is ClassDeclarationSyntax;
+
+    private GeneratorResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken) {
+        ClassDeclarationSyntax contextTargetNode = (ClassDeclarationSyntax)context.TargetNode;
+
+        SemanticModel semanticModel = context.SemanticModel;
+
+        if (!contextTargetNode.TryValidateType(out var @namespace, out var diagnostic)) {
+            return new GeneratorResult(diagnostic!);
+        }
+
+        AttributeSyntax? tryGetSpecifiedAttribute = contextTargetNode.AttributeLists.tryGetSpecifiedAttribute(nameof(IPartialAttribute));
+        if (tryGetSpecifiedAttribute is null) {
+            return GeneratorResult.Empty;
+        }
+
+        IPartialAttribute partialAttribute = IPartialAttribute.of(tryGetSpecifiedAttribute.getAttributeArgumentsAsDictionary(semanticModel)!);
+
+        if (string.IsNullOrEmpty(partialAttribute.model)) {
+            return GeneratorResult.Empty;
+        }
+
+        Dictionary<string, string> fill = new Dictionary<string, string>() {
+            { "type", contextTargetNode.toClassName() },
+            { "namespace", @namespace!.ToString() }
+        };
+
+        StringBuilder model = new StringBuilder();
+        partialAttribute.model!.format(model, k => model.Append(fill[k]));
+
+        return new GeneratorResult(
+            contextTargetNode.GetHintName(@namespace),
+            SourceText.From(model.ToString(), Encoding.UTF8)
         );
     }
 }
@@ -305,11 +351,11 @@ public abstract class MetadataAttributeGenerator : StandardAttributeGenerator<Me
 public abstract class ListAttributeGenerator : StandardAttributeGenerator<ListMetadataAttribute> {
     public override Func<Dictionary<string, object>, ClassDeclarationSyntax, TypeSyntax, ListMetadataAttribute> of() => (d, c, t) => {
         ListMetadataAttribute listMetadataAttribute = ListMetadataAttribute.of(d);
-        if (listMetadataAttribute.type is null && t is GenericNameSyntax genericNameSyntax) {
+        if (string.IsNullOrEmpty(listMetadataAttribute.type) && t is GenericNameSyntax genericNameSyntax) {
             TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
             listMetadataAttribute.type = firstOrDefault?.ToFullString();
         }
-        if (listMetadataAttribute.type is null) {
+        if (string.IsNullOrEmpty(listMetadataAttribute.type)) {
             return null;
         }
         return listMetadataAttribute;
@@ -320,16 +366,16 @@ public abstract class MapAttributeGenerator : StandardAttributeGenerator<MapMeta
     public override Func<Dictionary<string, object>, ClassDeclarationSyntax, TypeSyntax, MapMetadataAttribute> of() => (d, c, t) => {
         MapMetadataAttribute mapMetadataAttribute = MapMetadataAttribute.of(d);
         if (t is GenericNameSyntax genericNameSyntax) {
-            if (mapMetadataAttribute.keyType is null && genericNameSyntax.TypeArgumentList.Arguments.Count > 0) {
+            if (string.IsNullOrEmpty(mapMetadataAttribute.keyType) && genericNameSyntax.TypeArgumentList.Arguments.Count > 0) {
                 TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
                 mapMetadataAttribute.keyType = firstOrDefault?.ToFullString();
             }
-            if (mapMetadataAttribute.valueType is null && genericNameSyntax.TypeArgumentList.Arguments.Count > 1) {
+            if (string.IsNullOrEmpty(mapMetadataAttribute.valueType) && genericNameSyntax.TypeArgumentList.Arguments.Count > 1) {
                 TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments[1];
                 mapMetadataAttribute.valueType = firstOrDefault?.ToFullString();
             }
         }
-        if (mapMetadataAttribute.keyType is null || mapMetadataAttribute.valueType is null) {
+        if (string.IsNullOrEmpty(mapMetadataAttribute.keyType) || string.IsNullOrEmpty(mapMetadataAttribute.valueType)) {
             return null;
         }
         return mapMetadataAttribute;
@@ -475,7 +521,7 @@ public static class CreateMethodUtil {
             .GetText(Encoding.UTF8);
     }
 
-    public static ExpressionStatementSyntax validateNonFrozen(string freezeTag) {
+    public static StatementSyntax validateNonFrozen(string freezeTag) {
         return
             string.IsNullOrEmpty(freezeTag)
                 ? null!
@@ -500,7 +546,74 @@ public static class CreateMethodUtil {
                 );
     }
 
-    public static ExpressionStatementSyntax noNull(string fieldName, string? message = null) {
+    public static StatementSyntax validateUpdateField(string fieldName) {
+        return IfStatement(
+            InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("object"),
+                    IdentifierName(nameof(Equals))
+                ),
+                ArgumentList(
+                    SeparatedList(
+                        new[] {
+                            Argument(
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    ThisExpression(),
+                                    IdentifierName(fieldName)
+                                )
+                            ),
+                            Argument(
+                                IdentifierName(fieldName)
+                            ),
+                        }
+                    )
+                )
+            ),
+            Block(
+                ExpressionStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression, // 使用点号访问  ,
+                            ThisExpression(),
+                            IdentifierName("update" + fieldName.ToPascalCaseIdentifier())
+                        ),
+                        ArgumentList(
+                            SeparatedList(
+                                new[] {
+                                    Argument(
+                                        MemberAccessExpression(
+                                            SyntaxKind.SimpleMemberAccessExpression,
+                                            ThisExpression(),
+                                            IdentifierName(fieldName)
+                                        )
+                                    ),
+                                    Argument(
+                                        IdentifierName(fieldName)
+                                    ),
+                                }
+                            )
+                        )
+                    )
+                )
+            )
+        );
+    }
+
+    public static StatementSyntax updateField(string fieldName) {
+        return ExpressionStatement(
+            InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression, // 使用点号访问  ,
+                    ThisExpression(),
+                    IdentifierName("update" + fieldName.ToPascalCaseIdentifier())
+                )
+            )
+        );
+    }
+
+    public static StatementSyntax noNull(string fieldName, string? message = null) {
         return ExpressionStatement(
             InvocationExpression(
                 MemberAccessExpression(
@@ -522,7 +635,7 @@ public static class CreateMethodUtil {
                             Argument( // 创建一个参数表达式  
                                 IdentifierName(fieldName) // 引用参数i  
                             ),
-                            message is null
+                            message is not null
                                 ? Argument( // 创建一个参数表达式  
                                     IdentifierName($"\"{message}\"") // 引用参数i  
                                 )
@@ -585,7 +698,7 @@ public static class CreateMethodUtil {
                 metadataAttribute.link
                     ? IdentifierName(parentName)
                     : IdentifierName("void"),
-                "is" + fieldName.ToPascalCaseIdentifier()
+                "open" + fieldName.ToPascalCaseIdentifier()
             )
             .AddModifiers(Token(SyntaxKind.PublicKeyword))
             .AddParameterListParameters(Parameter(Identifier("action")).WithType(ParseTypeName($"Action<{typeName}>")))
@@ -639,13 +752,26 @@ public static class CreateMethodUtil {
                 "set" + fieldName.ToPascalCaseIdentifier()
             )
             .AddModifiers(Token(SyntaxKind.PublicKeyword))
-            .AddParameterListParameters(Parameter(Identifier(fieldName.ToCamelCaseIdentifier().genericEliminate())).WithType(ParseTypeName(typeName)))
+            .AddParameterListParameters(
+                Parameter(
+                    Identifier(
+                        fieldName.ToCamelCaseIdentifier().genericEliminate()
+                    )
+                ).WithType(
+                    ParseTypeName(
+                        typeName
+                    )
+                )
+            )
             .WithBody(
                 Block(
-                    new StatementSyntax[] {
-                        validateNonFrozen(metadataAttribute.freezeTag)!,
+                    new[] {
+                        validateNonFrozen(metadataAttribute.freezeTag),
                         metadataAttribute.noNull
                             ? noNull(fieldName.ToCamelCaseIdentifier().genericEliminate(), $"{parentName}.{"set" + fieldName.ToPascalCaseIdentifier()}方法中传入参数为null")
+                            : null!,
+                        metadataAttribute.updateField
+                            ? validateUpdateField(fieldName)
                             : null!,
                         ExpressionStatement(
                             AssignmentExpression(
@@ -707,7 +833,7 @@ public static class CreateMethodUtil {
             .AddParameterListParameters(Parameter(Identifier("a" + listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate())).WithType(ParseTypeName(listMetadataAttribute.type)))
             .WithBody(
                 Block(
-                    new StatementSyntax[] {
+                    new[] {
                         validateNonFrozen(listMetadataAttribute.freezeTag)!,
                         listMetadataAttribute.noNull
                             ? noNull(
@@ -755,7 +881,7 @@ public static class CreateMethodUtil {
             .AddParameterListParameters(Parameter(Identifier("a" + listMetadataAttribute.type.ToPascalCaseIdentifier().genericEliminate())).WithType(ParseTypeName(listMetadataAttribute.type)))
             .WithBody(
                 Block(
-                    new StatementSyntax[] {
+                    new[] {
                         validateNonFrozen(listMetadataAttribute.freezeTag)!,
                         ExpressionStatement(
                             InvocationExpression( // 创建一个方法调用表达式  
@@ -875,7 +1001,7 @@ public static class CreateMethodUtil {
             )
             .WithBody(
                 Block(
-                    new StatementSyntax[] {
+                    new[] {
                         validateNonFrozen(mapMetadataAttribute.freezeTag),
                         mapMetadataAttribute.noNull
                             ? noNull("key", $"{parentName}.put{mapMetadataAttribute.keyType.ToPascalCaseIdentifier().genericEliminate()}And{mapMetadataAttribute.valueType.ToPascalCaseIdentifier().genericEliminate()}In{fieldName}中key为null")

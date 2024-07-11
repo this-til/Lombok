@@ -17,6 +17,9 @@ public class MetadataAttribute : Attribute {
     /// </summary>
     public bool link;
 
+    /// <summary>
+    /// 设置非空
+    /// </summary>
     public bool noNull;
 
     /// <summary>
@@ -24,17 +27,31 @@ public class MetadataAttribute : Attribute {
     /// </summary>
     public string freezeTag;
 
+    /// <summary>
+    /// 调用更新方法
+    /// </summary>
+    public bool updateField;
+
+    public MetadataAttribute() {
+    }
+
+    public MetadataAttribute(MetadataAttribute metadataAttribute) {
+        link = metadataAttribute.link;
+        noNull = metadataAttribute.noNull;
+        freezeTag = metadataAttribute.freezeTag;
+        updateField = metadataAttribute.updateField;
+    }
+
     public static MetadataAttribute of(Dictionary<string, object?> data) {
         var attribute = new MetadataAttribute();
-        if (data.TryGetValue("link", out var link)) {
-            attribute.link = link is not null && (bool)link;
-        }
-        if (data.TryGetValue("noNull", out var noNull)) {
-            attribute.noNull = noNull is not null && (bool)noNull;
-        }
-        if (data.TryGetValue("freezeTag", out var freezeTag)) {
-            attribute.freezeTag = freezeTag?.ToString() ?? string.Empty;
-        }
+        data.TryGetValue("link", out var link);
+        attribute.link = link is not null && (bool)link;
+        data.TryGetValue("noNull", out var noNull);
+        attribute.noNull = noNull is not null && (bool)noNull;
+        data.TryGetValue("freezeTag", out var freezeTag);
+        attribute.freezeTag = freezeTag?.ToString() ?? string.Empty;
+        data.TryGetValue("updateField", out var updateField);
+        attribute.updateField = updateField is not null && (bool)updateField;
         return attribute;
     }
 }
@@ -50,23 +67,18 @@ public class ListMetadataAttribute : MetadataAttribute {
     /// </summary>
     public bool useYield;
 
+    public ListMetadataAttribute() {
+    }
+
+    public ListMetadataAttribute(MetadataAttribute metadataAttribute) : base(metadataAttribute) {
+    }
+
     public new static ListMetadataAttribute of(Dictionary<string, object?> data) {
-        var attribute = new ListMetadataAttribute();
-        if (data.TryGetValue("link", out var link)) {
-            attribute.link = link is not null && (bool)link;
-        }
-        if (data.TryGetValue("noNull", out var noNull)) {
-            attribute.noNull = noNull is not null && (bool)noNull;
-        }
-        if (data.TryGetValue("useYield", out var useYield)) {
-            attribute.useYield = useYield is not null && (bool)useYield;
-        }
-        if (data.TryGetValue("freezeTag", out var freezeTag)) {
-            attribute.freezeTag = freezeTag?.ToString() ?? string.Empty;
-        }
-        if (data.TryGetValue("type", out var type)) {
-            attribute.type = type?.ToString() ?? string.Empty;
-        }
+        var attribute = new ListMetadataAttribute(MetadataAttribute.of(data));
+        data.TryGetValue("useYield", out var useYield);
+        attribute.useYield = useYield is not null && (bool)useYield;
+        data.TryGetValue("type", out var type);
+        attribute.type = type?.ToString() ?? string.Empty;
         return attribute;
     }
 }
@@ -87,23 +99,20 @@ public class MapMetadataAttribute : MetadataAttribute {
     /// </summary>
     public bool useYield;
 
+    public MapMetadataAttribute() {
+    }
+
+    public MapMetadataAttribute(MetadataAttribute metadataAttribute) : base(metadataAttribute) {
+    }
+
     public new static MapMetadataAttribute of(Dictionary<string, object?> data) {
-        var attribute = new MapMetadataAttribute();
-        if (data.TryGetValue("link", out var link)) {
-            attribute.link = link is not null && (bool)link;
-        }
-        if (data.TryGetValue("freezeTag", out var freezeTag)) {
-            attribute.freezeTag = freezeTag?.ToString() ?? string.Empty;
-        }
-        if (data.TryGetValue("useYield", out var useYield)) {
-            attribute.useYield = useYield is not null && (bool)useYield;
-        }
-        if (data.TryGetValue("keyType", out var keyType)) {
-            attribute.keyType = keyType?.ToString() ?? string.Empty;
-        }
-        if (data.TryGetValue("valueType", out var valueType)) {
-            attribute.valueType = valueType?.ToString() ?? string.Empty;
-        }
+        var attribute = new MapMetadataAttribute(MetadataAttribute.of(data));
+        data.TryGetValue("useYield", out var useYield);
+        attribute.useYield = useYield is not null && (bool)useYield;
+        data.TryGetValue("keyType", out var keyType);
+        attribute.keyType = keyType?.ToString() ?? string.Empty;
+        data.TryGetValue("valueType", out var valueType);
+        attribute.valueType = valueType?.ToString() ?? string.Empty;
         return attribute;
     }
 }
@@ -185,20 +194,35 @@ public class ForAllAttribute : MapMetadataAttribute {
 [AttributeUsage(AttributeTargets.Class)]
 public class ISelfAttribute : Attribute {
     public string? instantiation;
+
     public static ISelfAttribute of(Dictionary<string, object?> data) {
         var attribute = new ISelfAttribute();
-       
-        if (data.TryGetValue("instantiation", out var instantiation)) {
-            attribute.instantiation = instantiation!.ToString();
-        }
-   
+
+        data.TryGetValue("instantiation", out var instantiation);
+        attribute.instantiation = instantiation!.ToString();
+
         return attribute;
     }
-    
 }
 
 [AttributeUsage(AttributeTargets.Class)]
 public class IPackAttribute : Attribute {
+
+}
+
+[AttributeUsage(AttributeTargets.Class)]
+public class IPartialAttribute : Attribute {
+    public string? model;
+
+    public static IPartialAttribute of(Dictionary<string, object?> data) {
+        var attribute = new IPartialAttribute();
+
+        data.TryGetValue("model", out var model);
+        attribute.model = model!.ToString();
+
+        return attribute;
+    }
+
 }
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]

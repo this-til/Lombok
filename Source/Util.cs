@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -823,7 +825,7 @@ public static class Util {
             throw new NullReferenceException(message);
         }
     }
-    
+
     public static IDictionary<string, object> pack<T>(this T t) where T : class {
         IDictionary<string, object> dictionary = new Dictionary<string, object>();
 
@@ -842,5 +844,69 @@ public static class Util {
         }
         return dictionary;
     }
-    
+
+    public static void format(this string format, StringBuilder? stringBuilder, Action<string> structure /*IDictionary<string, object> args*/) {
+        if ((format == null) || (structure == null)) {
+            throw new ArgumentNullException((format == null) ? "format" : "args");
+        }
+
+        bool startBrace = false;
+        int startBraceIndex = -1;
+
+        for (var i = 0; i < format.Length; i++) {
+            char c = format[i];
+
+            switch (c) {
+                case '{':
+
+                    if (startBrace) {
+                        if (i - startBraceIndex == 1) {
+                            startBrace = false;
+                            stringBuilder?.Append('{');
+                            break;
+                        }
+                        ThrowFormatException();
+                    }
+
+                    startBrace = true;
+                    startBraceIndex = i;
+
+                    break;
+                case '}':
+
+                    if (!startBrace) {
+                        if (i + 1 < format.Length && format[i] == '}') {
+                            stringBuilder?.Append('}');
+                            i++;
+                            break;
+                        }
+
+                        ThrowFormatException();
+                    }
+
+                    startBrace = false;
+
+                    string key = format.Substring(startBraceIndex + 1, i - startBraceIndex - 1);
+
+                    structure(key);
+
+                    break;
+                default:
+
+                    if (!startBrace) {
+                        stringBuilder?.Append(c);
+                    }
+
+                    break;
+            }
+        }
+    }
+
+    private static void ThrowFormatException() {
+        throw new FormatException("Input string was not in a correct format.");
+    }
+
+    public static string GetThisFilePath([CallerFilePath] string path = null!) {
+        return path;
+    }
 }

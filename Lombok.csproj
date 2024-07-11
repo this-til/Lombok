@@ -2,10 +2,10 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <LangVersion>11</LangVersion>
+        <LangVersion>9</LangVersion>
         <Nullable>enable</Nullable>
         <PackageId>Til.Lombok</PackageId>
-        <Version>1.1.11</Version>
+        <Version>1.1.12</Version>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <Authors>til</Authors>
         <Title>由于作者太懒了专门开发的代码生成器</Title>
@@ -22,6 +22,7 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <EnablePackageValidation>true</EnablePackageValidation>
         <NoWarn>RS2008</NoWarn>
+        <NoWarn>CS1591</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

@@ -829,14 +829,14 @@ namespace Til.Lombok {
             IDictionary<string, object> dictionary = new Dictionary<string, object>();
 
             foreach (FieldInfo fieldInfo in t.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-                if (fieldInfo.GetCustomAttribute<PackField>() is null) {
+                if (fieldInfo.GetCustomAttribute<PackFieldAttribute>() is null) {
                     continue;
                 }
                 dictionary.Add(fieldInfo.Name, fieldInfo.GetValue(t)!);
             }
 
             foreach (PropertyInfo propertyInfo in t.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-                if (propertyInfo.GetCustomAttribute<PackField>() is null) {
+                if (propertyInfo.GetCustomAttribute<PackFieldAttribute>() is null) {
                     continue;
                 }
                 dictionary.Add(propertyInfo.Name, propertyInfo.GetValue(t)!);

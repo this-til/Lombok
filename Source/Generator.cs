@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading;
+using System.Transactions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -73,6 +75,340 @@ namespace Til.Lombok {
     }
 
     [Generator]
+    public sealed class SpecificationGenerator : IIncrementalGenerator {
+        private static readonly string AttributeName = typeof(ILombokAttribute).FullName!;
+
+        public void Initialize(IncrementalGeneratorInitializationContext context) {
+            var sources = context.SyntaxProvider.ForAttributeWithMetadataName(AttributeName, IsCandidate, Transform);
+            context.AddSources(sources);
+        }
+
+        private bool IsCandidate(SyntaxNode node, CancellationToken cancellationToken) => node is ClassDeclarationSyntax;
+
+        private GeneratorResult Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken) {
+            ClassDeclarationSyntax contextTargetNode = (ClassDeclarationSyntax)context.TargetNode;
+
+            SemanticModel semanticModel = context.SemanticModel;
+
+            if (!contextTargetNode.TryValidateType(out var @namespace, out var diagnostic)) {
+                return new GeneratorResult(diagnostic);
+            }
+
+            List<CSharpSyntaxNode> toString = new List<CSharpSyntaxNode>();
+            List<CSharpSyntaxNode> hashCode = new List<CSharpSyntaxNode>();
+            List<CSharpSyntaxNode> equals = new List<CSharpSyntaxNode>();
+
+            // 遍历类的所有成员  
+            foreach (var member in contextTargetNode.Members) {
+                switch (member) {
+                    // 检查成员是否是字段或属性  
+                    case FieldDeclarationSyntax fieldDeclaration: {
+                        AttributeSyntax? tryGetSpecifiedAttribute = fieldDeclaration.AttributeLists.tryGetSpecifiedAttribute(nameof(ToStringFieldAttribute));
+                        if (tryGetSpecifiedAttribute is not null) {
+                            foreach (VariableDeclaratorSyntax variableDeclaratorSyntax in fieldDeclaration.Declaration.Variables) {
+                                toString.Add(variableDeclaratorSyntax);
+                            }
+                        }
+                        tryGetSpecifiedAttribute = fieldDeclaration.AttributeLists.tryGetSpecifiedAttribute(nameof(HashCodeFieldAttribute));
+                        if (tryGetSpecifiedAttribute is not null) {
+                            foreach (VariableDeclaratorSyntax variableDeclaratorSyntax in fieldDeclaration.Declaration.Variables) {
+                                hashCode.Add(variableDeclaratorSyntax);
+                            }
+                        }
+                        tryGetSpecifiedAttribute = fieldDeclaration.AttributeLists.tryGetSpecifiedAttribute(nameof(EqualsFieldAttribute));
+                        if (tryGetSpecifiedAttribute is not null) {
+                            foreach (VariableDeclaratorSyntax variableDeclaratorSyntax in fieldDeclaration.Declaration.Variables) {
+                                equals.Add(variableDeclaratorSyntax);
+                            }
+                        }
+                        break;
+                    }
+                    case PropertyDeclarationSyntax propertyDeclaration: {
+                        AttributeSyntax? tryGetSpecifiedAttribute = propertyDeclaration.AttributeLists.tryGetSpecifiedAttribute(nameof(ToStringFieldAttribute));
+                        if (tryGetSpecifiedAttribute is not null) {
+                            toString.Add(propertyDeclaration);
+                        }
+                        tryGetSpecifiedAttribute = propertyDeclaration.AttributeLists.tryGetSpecifiedAttribute(nameof(HashCodeFieldAttribute));
+                        if (tryGetSpecifiedAttribute is not null) {
+                            toString.Add(propertyDeclaration);
+                        }
+                        tryGetSpecifiedAttribute = propertyDeclaration.AttributeLists.tryGetSpecifiedAttribute(nameof(EqualsFieldAttribute));
+                        if (tryGetSpecifiedAttribute is not null) {
+                            toString.Add(propertyDeclaration);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (toString.Count == 0 && hashCode.Count == 0 && equals.Count == 0) {
+                return GeneratorResult.Empty;
+            }
+
+            List<MethodDeclarationSyntax> methodDeclarationSyntaxes = new List<MethodDeclarationSyntax>();
+
+            if (toString.Count != 0) {
+                StringBuilder stringBuilder = new StringBuilder();
+                stringBuilder
+                    .Append('$')
+                    .Append('"')
+                    .Append(contextTargetNode.toClassName())
+                    .Append('(')
+                    .Append(string.Join(",", toString.Select(s => $"{s}={{this.{s}}}")))
+                    .Append(',')
+                    .Append("base={base.ToString()}")
+                    .Append(')')
+                    .Append('"');
+
+                methodDeclarationSyntaxes.Add(
+                    MethodDeclaration(
+                            IdentifierName("string"),
+                            "ToString"
+                        )
+                        .AddModifiers(
+                            Token(SyntaxKind.PublicKeyword),
+                            Token(SyntaxKind.OverrideKeyword)
+                        ).WithBody(
+                            Block(
+                                ReturnStatement(
+                                    IdentifierName(stringBuilder.ToString())
+                                )
+                            )
+                        )
+                );
+            }
+
+            if (hashCode.Count != 0) {
+                List<StatementSyntax> list = new List<StatementSyntax>();
+
+                list.Add(
+                    LocalDeclarationStatement(
+                        VariableDeclaration(
+                            PredefinedType(
+                                Token(SyntaxKind.IntKeyword)
+                            ),
+                            SeparatedList(
+                                new[] {
+                                    VariableDeclarator(
+                                        Identifier("h"),
+                                        null,
+                                        EqualsValueClause(
+                                            LiteralExpression(
+                                                SyntaxKind.NumericLiteralExpression,
+                                                Literal(17)
+                                            )
+                                        )
+                                    )
+                                }
+                            )
+                        )
+                    )
+                );
+
+                foreach (var se in hashCode) {
+                    bool isValueType = se is VariableDeclaratorSyntax variableDeclaratorSyntax
+                        ? (semanticModel.GetSymbolInfo(((VariableDeclarationSyntax)variableDeclaratorSyntax.Parent!).Type).Symbol as ITypeSymbol)?.IsValueType ?? false
+                        : (semanticModel.GetSymbolInfo(((PropertyDeclarationSyntax)se).Type).Symbol as ITypeSymbol)?.IsValueType ?? false;
+
+                    list.Add(
+                        ExpressionStatement(
+                            AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                IdentifierName("h"),
+                                BinaryExpression(
+                                    SyntaxKind.AddExpression,
+                                    BinaryExpression(
+                                        SyntaxKind.MultiplyExpression,
+                                        IdentifierName("h"),
+                                        LiteralExpression(
+                                            SyntaxKind.NumericLiteralExpression,
+                                            Literal(23)
+                                        )
+                                    ),
+                                    isValueType
+                                        ? InvocationExpression(
+                                            MemberAccessExpression(
+                                                SyntaxKind.SimpleMemberAccessExpression,
+                                                MemberAccessExpression(
+                                                    SyntaxKind.SimpleMemberAccessExpression,
+                                                    ThisExpression(),
+                                                    IdentifierName(se.ToString())
+                                                ),
+                                                IdentifierName(nameof(GetHashCode))
+                                            )
+                                        )
+                                        : BinaryExpression(
+                                            SyntaxKind.CoalesceExpression,
+                                            ConditionalAccessExpression(
+                                                MemberAccessExpression(
+                                                    SyntaxKind.SimpleMemberAccessExpression,
+                                                    ThisExpression(),
+                                                    IdentifierName(se.ToString())
+                                                ),
+                                                InvocationExpression(
+                                                    MemberBindingExpression(
+                                                        Token(SyntaxKind.DotToken),
+                                                        IdentifierName(nameof(GetHashCode))
+                                                    )
+                                                )
+                                            ),
+                                            LiteralExpression(
+                                                SyntaxKind.NumericLiteralExpression,
+                                                Literal(0)
+                                            )
+                                        )
+                                )
+                            )
+                        )
+                    );
+                }
+
+                list.Add(
+                    ReturnStatement(
+                        IdentifierName("h")
+                    )
+                );
+
+                methodDeclarationSyntaxes.Add(
+                    MethodDeclaration(
+                            IdentifierName("int"),
+                            "GetHashCode"
+                        )
+                        .AddModifiers(
+                            Token(SyntaxKind.PublicKeyword),
+                            Token(SyntaxKind.OverrideKeyword)
+                        )
+                        .WithBody(
+                            Block(
+                                CheckedStatement(
+                                    SyntaxKind.UncheckedStatement,
+                                    Block(
+                                        list
+                                    )
+                                )
+                            )
+                        )
+                );
+            }
+            if (equals.Count != 0) {
+                IsPatternExpressionSyntax isPatternExpressionSyntax = IsPatternExpression(
+                    ParseTypeName("obj"),
+                    DeclarationPattern(
+                        ParseTypeName(contextTargetNode.toClassName()),
+                        SingleVariableDesignation(
+                            Identifier("_obj")
+                        )
+                    )
+                );
+                List<InvocationExpressionSyntax> list = new List<InvocationExpressionSyntax>();
+
+                foreach (var equal in equals) {
+                    list.Add(
+                        InvocationExpression(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                IdentifierName("object"),
+                                IdentifierName("Equals")
+                            ),
+                            ArgumentList(
+                                SeparatedList(
+                                    new[] {
+                                        Argument(
+                                            IdentifierName(equal.ToString())
+                                        ),
+                                        Argument(
+                                            MemberAccessExpression(
+                                                SyntaxKind.SimpleMemberAccessExpression,
+                                                IdentifierName("_obj"),
+                                                IdentifierName(equal.ToString())
+                                            )
+                                        )
+                                    }
+                                )
+                            )
+                        )
+                    );
+                }
+
+                ExpressionSyntax expression = null!;
+
+                for (var i = 0; i < list.Count; i++) {
+                    if (i == 0) {
+                        expression = list[0];
+                        continue;
+                    }
+                    expression = BinaryExpression(
+                        SyntaxKind.LogicalAndExpression,
+                        expression,
+                        list[i]
+                    );
+                }
+
+                methodDeclarationSyntaxes.Add(
+                    MethodDeclaration(
+                            IdentifierName("bool"),
+                            "Equals"
+                        )
+                        .AddModifiers(
+                            Token(SyntaxKind.PublicKeyword),
+                            Token(SyntaxKind.OverrideKeyword)
+                        )
+                        .AddParameterListParameters(
+                            Parameter(
+                                    Identifier(
+                                        "obj"
+                                    )
+                                )
+                                .WithType(
+                                    ParseTypeName(
+                                        "object"
+                                    )
+                                )
+                        )
+                        .WithBody(
+                            Block(
+                                IfStatement(
+                                    BinaryExpression(
+                                        SyntaxKind.EqualsExpression,
+                                        IdentifierName("obj"),
+                                        ThisExpression()
+                                    ),
+                                    Block(
+                                        ReturnStatement(
+                                            LiteralExpression(
+                                                SyntaxKind.TrueLiteralExpression
+                                            )
+                                        )
+                                    )
+                                ),
+                                IfStatement(
+                                    isPatternExpressionSyntax.WithPattern(
+                                        UnaryPattern(
+                                            Token(SyntaxKind.NotKeyword),
+                                            isPatternExpressionSyntax.Pattern
+                                        )
+                                    ),
+                                    Block(
+                                        ReturnStatement(
+                                            LiteralExpression(
+                                                SyntaxKind.FalseLiteralExpression
+                                            )
+                                        )
+                                    )
+                                ),
+                                ReturnStatement(
+                                    expression
+                                )
+                            )
+                        )
+                );
+            }
+
+            return new GeneratorResult(contextTargetNode.GetHintName(@namespace), CreateMethodUtil.CreatePartialClass(@namespace, contextTargetNode, methodDeclarationSyntaxes));
+        }
+    }
+
+    [Generator]
     public sealed class FreezeGenerator : IIncrementalGenerator {
         private static readonly string AttributeName = typeof(IFreezeAttribute).FullName!;
 
@@ -90,8 +426,8 @@ namespace Til.Lombok {
                 return new GeneratorResult(diagnostic);
             }
 
-            string model = 
-$@"using System.Collections.Generic;
+            string model =
+                $@"using System.Collections.Generic;
 using Til.Lombok;
 using System;
 
@@ -153,7 +489,7 @@ namespace {@namespace.ToString()} {'{'}
             }
 
             string model =
-$@"using System;
+                $@"using System;
 using System.Collections.Generic; 
 using Til.Lombok;
 
@@ -211,7 +547,7 @@ namespace {@namespace!.ToString()} {'{'}
             string instantiation = selfAttribute.instantiation is not null ? String.Format(selfAttribute.instantiation, contextTargetNode.toClassName()) : $"new {contextTargetNode.toClassName()}()";
 
             string model =
-$@"using System;
+                $@"using System;
 using Til.Lombok;
 
 namespace {@namespace!.ToString()} {'{'}
@@ -238,7 +574,6 @@ namespace {@namespace!.ToString()} {'{'}
         private static readonly string AttributeName = typeof(IPartialAttribute).FullName!;
 
         public void Initialize(IncrementalGeneratorInitializationContext context) {
-            Console.WriteLine(Environment.CurrentDirectory);
             var sources = context.SyntaxProvider.ForAttributeWithMetadataName(AttributeName, IsCandidate, Transform);
             context.AddSources(sources);
         }
@@ -254,24 +589,30 @@ namespace {@namespace!.ToString()} {'{'}
                 return new GeneratorResult(diagnostic!);
             }
 
-            AttributeSyntax? tryGetSpecifiedAttribute = contextTargetNode.AttributeLists.tryGetSpecifiedAttribute(nameof(IPartialAttribute));
-            if (tryGetSpecifiedAttribute is null) {
-                return GeneratorResult.Empty;
+            string attributeName = nameof(IPartialAttribute);
+            if (attributeName.EndsWith("Attribute")) {
+                attributeName = attributeName.Substring(0, attributeName.Length - 9);
             }
 
-            IPartialAttribute partialAttribute = IPartialAttribute.of(tryGetSpecifiedAttribute.getAttributeArgumentsAsDictionary(semanticModel)!);
-
-            if (string.IsNullOrEmpty(partialAttribute.model)) {
-                return GeneratorResult.Empty;
-            }
+            StringBuilder model = new StringBuilder();
 
             Dictionary<string, string> fill = new Dictionary<string, string>() {
                 { "type", contextTargetNode.toClassName() },
                 { "namespace", @namespace!.ToString() }
             };
 
-            StringBuilder model = new StringBuilder();
-            partialAttribute.model!.format(model, k => model.Append(fill[k]));
+            foreach (AttributeListSyntax attributeList in contextTargetNode.AttributeLists) {
+                foreach (AttributeSyntax attribute in attributeList.Attributes) {
+                    if (attributeName.Equals(attribute.Name.ToString()) || attributeName.Equals(attribute.Name.ToString())) {
+                        IPartialAttribute partialAttribute = IPartialAttribute.of(attribute.getAttributeArgumentsAsDictionary(semanticModel)!);
+                        if (string.IsNullOrEmpty(partialAttribute.model)) {
+                            continue;
+                        }
+                        partialAttribute.model!.format(model, k => model.Append(fill[k]));
+                        model.Append('\n');
+                    }
+                }
+            }
 
             return new GeneratorResult(
                 contextTargetNode.GetHintName(@namespace),
@@ -508,13 +849,40 @@ namespace {@namespace!.ToString()} {'{'}
 
     public static class CreateMethodUtil {
         public static SourceText CreatePartialClass(NameSyntax @namespace, ClassDeclarationSyntax classDeclaration, IEnumerable<MethodDeclarationSyntax> methods) {
-            return @namespace.CreateNewNamespace(classDeclaration.GetUsings(),
+            return SourceText.From(
+                CompilationUnit()
+                    .WithUsings(classDeclaration.GetUsings())
+                    .AddMembers(
+                        NamespaceDeclaration(@namespace)
+                            .AddMembers(
+                                classDeclaration.CreateNewPartialClass()
+                                    .WithMembers(List<MemberDeclarationSyntax>(methods))
+                            )
+                    )
+                    .NormalizeWhitespace()
+                    .ToFullString(),
+                Encoding.UTF8
+            );
+            /*@namespace.CreateNewNamespace(classDeclaration.GetUsings(),
                     classDeclaration.CreateNewPartialClass()
                         .WithMembers(
                             List<MemberDeclarationSyntax>(methods)
                         )
                 ).NormalizeWhitespace()
                 .GetText(Encoding.UTF8);
+
+            context.AddSource("R.g.cs", SourceText.From(
+                CompilationUnit()
+                    .AddUsings(namespaceList.Select(x => UsingDirective(ParseName(x))).ToArray())
+                    .AddMembers(
+                        NamespaceDeclaration(ParseName(compilationAssemblyName!))
+                            .AddMembers(
+                                ClassDeclaration("R")
+                                    .AddModifiers(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
+                                    .AddMembers(memberDeclarationSyntaxList.ToArray())
+                            )
+                    )
+                    .NormalizeWhitespace().ToFullString(), Encoding.UTF8));*/
         }
 
         public static StatementSyntax validateNonFrozen(string freezeTag) {

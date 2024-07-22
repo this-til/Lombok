@@ -206,10 +206,9 @@ namespace Til.Lombok {
 
     [AttributeUsage(AttributeTargets.Class)]
     public class IPackAttribute : Attribute {
-
     }
 
-    [AttributeUsage(AttributeTargets.Class)]
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
     public class IPartialAttribute : Attribute {
         public string? model;
 
@@ -221,10 +220,35 @@ namespace Til.Lombok {
 
             return attribute;
         }
+    }
 
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+    public class MultipleExtendsAttribute : Attribute {
+        public string? className;
+
+        public static MultipleExtendsAttribute of(Dictionary<string, object?> data) {
+            var attribute = new MultipleExtendsAttribute();
+
+            data.TryGetValue("className", out var model);
+            attribute.className = model!.ToString();
+
+            return attribute;
+        }
+    }
+    
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+    public class PackFieldAttribute : Attribute {
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class PackField : Attribute {
+    public class ToStringFieldAttribute : Attribute {
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+    public class HashCodeFieldAttribute : Attribute {
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+    public class EqualsFieldAttribute : Attribute {
     }
 }

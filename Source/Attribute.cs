@@ -235,7 +235,7 @@ namespace Til.Lombok {
             return attribute;
         }
     }
-    
+
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class PackFieldAttribute : Attribute {
     }
@@ -251,4 +251,6 @@ namespace Til.Lombok {
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class EqualsFieldAttribute : Attribute {
     }
+
+ 
 }

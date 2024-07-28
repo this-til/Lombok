@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 
 namespace Til.Lombok {
+
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface)]
     public class ILombokAttribute : Attribute {
     }
@@ -62,6 +63,11 @@ namespace Til.Lombok {
         public string type;
 
         /// <summary>
+        /// 直接的
+        /// </summary>
+        public bool direct;
+
+        /// <summary>
         /// 在for中指定是否使用yield
         /// </summary>
         public bool useYield;
@@ -76,6 +82,8 @@ namespace Til.Lombok {
             var attribute = new ListMetadataAttribute(MetadataAttribute.of(data));
             data.TryGetValue("useYield", out var useYield);
             attribute.useYield = useYield is not null && (bool)useYield;
+            data.TryGetValue("direct", out var direct);
+            attribute.direct = direct is not null && (bool)direct;
             data.TryGetValue("type", out var type);
             attribute.type = type?.ToString() ?? string.Empty;
             return attribute;
@@ -94,6 +102,11 @@ namespace Til.Lombok {
         public string valueType;
 
         /// <summary>
+        /// 直接的
+        /// </summary>
+        public bool direct;
+
+        /// <summary>
         /// 在for中指定是否使用yield
         /// </summary>
         public bool useYield;
@@ -108,6 +121,8 @@ namespace Til.Lombok {
             var attribute = new MapMetadataAttribute(MetadataAttribute.of(data));
             data.TryGetValue("useYield", out var useYield);
             attribute.useYield = useYield is not null && (bool)useYield;
+            data.TryGetValue("direct", out var direct);
+            attribute.direct = direct is not null && (bool)direct;
             data.TryGetValue("keyType", out var keyType);
             attribute.keyType = keyType?.ToString() ?? string.Empty;
             data.TryGetValue("valueType", out var valueType);
@@ -252,5 +267,4 @@ namespace Til.Lombok {
     public class EqualsFieldAttribute : Attribute {
     }
 
- 
 }

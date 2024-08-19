@@ -1,10 +1,12 @@
 ﻿using System;
 
 namespace Til.Lombok {
+
     /// <summary>
     /// The kind of members which Lombok.NET supports.
     /// </summary>
     public enum MemberType {
+
         /// <summary>
         /// Default value.
         /// </summary>
@@ -19,6 +21,7 @@ namespace Til.Lombok {
         /// A C# property.
         /// </summary>
         Property
+
     }
 
     /// <summary>
@@ -26,6 +29,7 @@ namespace Til.Lombok {
     /// </summary>
     [Flags]
     public enum AccessTypes {
+
         /// <summary>
         /// Associated with the private keyword.
         /// </summary>
@@ -45,32 +49,36 @@ namespace Til.Lombok {
         /// Associated with the public keyword.
         /// </summary>
         Public
+
     }
 
-    /// <summary>
-    /// The types of change events which can be raised by Lombok.NET
-    /// </summary>
-    public enum PropertyChangeType {
-        /// <summary>
-        /// Default value.
-        /// </summary>
-        None = 0,
+    public enum AccessLevel {
 
-        /// <summary>
-        /// After a property has changed.
-        /// <see cref="System.ComponentModel.INotifyPropertyChanged"/>
-        /// </summary>
-        PropertyChanged,
+        Private,
 
-        /// <summary>
-        /// Before a property has changed.
-        /// <see cref="System.ComponentModel.INotifyPropertyChanging"/>
-        /// </summary>
-        PropertyChanging,
+        Protected,
 
-        /// <summary>
-        /// Property change handling as performed by the ReactiveUI library.
-        /// </summary>
-        ReactivePropertyChange
+        ProtectedInternal,
+
+        Internal,
+
+        Public
+
     }
+
+    public enum MethodType {
+
+        def,
+
+        Abstract,
+        Partial,
+        
+        Override,
+        Virtual,
+    }
+
+    public class A {
+
+    }
+
 }

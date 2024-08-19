@@ -5,13 +5,16 @@ namespace Til.Lombok {
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface)]
     public class ILombokAttribute : Attribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Class)]
     public class IFreezeAttribute : Attribute {
+
     }
 
     public class MetadataAttribute : Attribute {
+
         /// <summary>
         /// 在 set 方法中，如果属性被标记为 true，将生成链式调用
         /// </summary>
@@ -32,6 +35,16 @@ namespace Til.Lombok {
         /// </summary>
         public bool updateField;
 
+        /// <summary>
+        /// 可见性
+        /// </summary>
+        public AccessLevel accessLevel;
+
+        /// <summary>
+        /// 方法类型
+        /// </summary>
+        public MethodType methodType;
+
         public MetadataAttribute() {
         }
 
@@ -40,6 +53,7 @@ namespace Til.Lombok {
             noNull = metadataAttribute.noNull;
             freezeTag = metadataAttribute.freezeTag;
             updateField = metadataAttribute.updateField;
+            accessLevel = metadataAttribute.accessLevel;
         }
 
         public static MetadataAttribute of(Dictionary<string, object?> data) {
@@ -52,11 +66,17 @@ namespace Til.Lombok {
             attribute.freezeTag = freezeTag?.ToString() ?? string.Empty;
             data.TryGetValue("updateField", out var updateField);
             attribute.updateField = updateField is not null && (bool)updateField;
+            data.TryGetValue("accessLevel", out var accessTypes);
+            attribute.accessLevel = accessTypes is null ? AccessLevel.Public : (AccessLevel)Enum.Parse(typeof(AccessLevel), accessTypes.ToString());
+            data.TryGetValue("methodType", out var methodType);
+            attribute.methodType = methodType is null ? MethodType.def : (MethodType)Enum.Parse(typeof(MethodType), methodType.ToString());
             return attribute;
         }
+
     }
 
     public class ListMetadataAttribute : MetadataAttribute {
+
         /// <summary>
         /// 在list方法中指定泛型类型
         /// </summary>
@@ -88,9 +108,11 @@ namespace Til.Lombok {
             attribute.type = type?.ToString() ?? string.Empty;
             return attribute;
         }
+
     }
 
     public class MapMetadataAttribute : MetadataAttribute {
+
         /// <summary>
         /// 在map方法中指定泛型Key类型
         /// </summary>
@@ -129,84 +151,104 @@ namespace Til.Lombok {
             attribute.valueType = valueType?.ToString() ?? string.Empty;
             return attribute;
         }
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class GetAttribute : MetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class IsAttribute : MetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class OpenAttribute : MetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class SetAttribute : MetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class AddAttribute : ListMetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class RemoveAttribute : ListMetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class IndexAttribute : ListMetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class ContainAttribute : ListMetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class ForAttribute : ListMetadataAttribute {
+
     }
 
     //------------------------------------------------------------------------------------
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class PutAttribute : MapMetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class MapGetAttribute : MapMetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class RemoveKeyAttribute : MapMetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class RemoveValueAttribute : MapMetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class ContainKeyAttribute : MapMetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class ContainValueAttribute : MapMetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class ForKeyAttribute : MapMetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class ForValueAttribute : MapMetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class ForAllAttribute : MapMetadataAttribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Class)]
     public class ISelfAttribute : Attribute {
+
         public string? instantiation;
 
         public static ISelfAttribute of(Dictionary<string, object?> data) {
@@ -217,14 +259,17 @@ namespace Til.Lombok {
 
             return attribute;
         }
+
     }
 
     [AttributeUsage(AttributeTargets.Class)]
     public class IPackAttribute : Attribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
     public class IPartialAttribute : Attribute {
+
         public string? model;
 
         public static IPartialAttribute of(Dictionary<string, object?> data) {
@@ -235,10 +280,12 @@ namespace Til.Lombok {
 
             return attribute;
         }
+
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
     public class MultipleExtendsAttribute : Attribute {
+
         public string? className;
 
         public static MultipleExtendsAttribute of(Dictionary<string, object?> data) {
@@ -249,22 +296,27 @@ namespace Til.Lombok {
 
             return attribute;
         }
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class PackFieldAttribute : Attribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class ToStringFieldAttribute : Attribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class HashCodeFieldAttribute : Attribute {
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class EqualsFieldAttribute : Attribute {
+
     }
 
 }

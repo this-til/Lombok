@@ -13,7 +13,9 @@ using Microsoft.CodeAnalysis.Text;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Til.Lombok {
+
     public abstract class GeneratorBasics : IIncrementalGenerator {
+
         private static readonly string AttributeName = typeof(ILombokAttribute).FullName!;
 
         public void Initialize(IncrementalGeneratorInitializationContext context) {
@@ -57,16 +59,10 @@ namespace Til.Lombok {
                                      fieldDeclaration,
                                      semanticModel
                                  )) {
-                            try {
-                                methodDeclarationSyntaxes.Add(
-                                    methodDeclarationSyntax
-                                );
-                            }
-                            catch (Exception e) {
-                                Console.WriteLine(
-                                    e
-                                );
-                            }
+                            methodDeclarationSyntaxes.Add(
+                                methodDeclarationSyntax
+                            );
+
                         }
                         break;
                     }
@@ -75,16 +71,10 @@ namespace Til.Lombok {
                                      propertyDeclaration,
                                      semanticModel
                                  )) {
-                            try {
-                                methodDeclarationSyntaxes.Add(
-                                    methodDeclarationSyntax
-                                );
-                            }
-                            catch (Exception e) {
-                                Console.WriteLine(
-                                    e
-                                );
-                            }
+                            methodDeclarationSyntaxes.Add(
+                                methodDeclarationSyntax
+                            );
+
                         }
                         break;
                     }
@@ -114,11 +104,12 @@ namespace Til.Lombok {
         public abstract IEnumerable<MethodDeclarationSyntax> onPropertyDeclarationSyntax(
             PropertyDeclarationSyntax propertyDeclarationSyntax,
             SemanticModel semanticModel);
-    }
 
+    }
 
     [Generator]
     public sealed class SpecificationGenerator : IIncrementalGenerator {
+
         private static readonly string AttributeName = typeof(ILombokAttribute).FullName!;
 
         public void Initialize(IncrementalGeneratorInitializationContext context) {
@@ -594,10 +585,12 @@ namespace Til.Lombok {
                 )
             );
         }
+
     }
 
     [Generator]
     public sealed class FreezeGenerator : IIncrementalGenerator {
+
         private static readonly string AttributeName = typeof(IFreezeAttribute).FullName!;
 
         public void Initialize(IncrementalGeneratorInitializationContext context) {
@@ -673,10 +666,12 @@ namespace {@namespace.ToString()} {'{'}
                 )
             );
         }
+
     }
 
     [Generator]
     public class IPackGenerator : IIncrementalGenerator {
+
         private static readonly string AttributeName = typeof(IPackAttribute).FullName!;
 
         public void Initialize(IncrementalGeneratorInitializationContext context) {
@@ -743,10 +738,12 @@ namespace {@namespace!.ToString()} {'{'}
                 )
             );
         }
+
     }
 
     [Generator]
     public class SelfGenerator : IIncrementalGenerator {
+
         private static readonly string AttributeName = typeof(ISelfAttribute).FullName!;
 
         public void Initialize(IncrementalGeneratorInitializationContext context) {
@@ -826,10 +823,12 @@ namespace {@namespace!.ToString()} {'{'}
                 )
             );
         }
+
     }
 
     [Generator]
     public sealed class PartialGenerator : IIncrementalGenerator {
+
         private static readonly string AttributeName = typeof(IPartialAttribute).FullName!;
 
         public void Initialize(IncrementalGeneratorInitializationContext context) {
@@ -921,9 +920,11 @@ namespace {@namespace!.ToString()} {'{'}
                 )
             );
         }
+
     }
 
     public abstract class AttributeGenerator : GeneratorBasics {
+
         public abstract string getAttributeName();
 
         public abstract IEnumerable<MethodDeclarationSyntax> onFieldDeclarationSyntax(
@@ -974,9 +975,11 @@ namespace {@namespace!.ToString()} {'{'}
                 )
             );
         }
+
     }
 
-    public abstract class StandardAttributeGenerator<A> : AttributeGenerator {
+    public abstract class StandardAttributeGenerator<A> : AttributeGenerator where A : MetadataAttribute {
+
         public abstract Func<string, string, string, A, MethodDeclarationSyntax> createMethodDeclarationSyntax();
 
         public abstract Func<Dictionary<string, object>, ClassDeclarationSyntax, TypeSyntax, A> of();
@@ -994,12 +997,13 @@ namespace {@namespace!.ToString()} {'{'}
                 yield break;
             }
             foreach (VariableDeclaratorSyntax variable in fieldDeclarationSyntax.Declaration.Variables) {
-                yield return createMethodDeclarationSyntax()(
+                MethodDeclarationSyntax methodDeclarationSyntax = createMethodDeclarationSyntax()(
                     variable.Identifier.ToString(),
                     fieldDeclarationSyntax.Declaration.Type.ToString(),
                     ((ClassDeclarationSyntax)fieldDeclarationSyntax.Parent).getHasGenericName(),
                     attribute
                 );
+                yield return CreateMethodUtil.methodDeclarationSyntaxes(methodDeclarationSyntax, attribute);
             }
         }
 
@@ -1015,25 +1019,30 @@ namespace {@namespace!.ToString()} {'{'}
             if (attribute is null) {
                 yield break;
             }
-            yield return createMethodDeclarationSyntax()(
+            MethodDeclarationSyntax methodDeclarationSyntax = createMethodDeclarationSyntax()(
                 propertyDeclarationSyntax.Identifier.ToString(),
                 propertyDeclarationSyntax.Type.ToString(),
                 ((ClassDeclarationSyntax)propertyDeclarationSyntax.Parent).getHasGenericName(),
                 attribute
             );
+            yield return CreateMethodUtil.methodDeclarationSyntaxes(methodDeclarationSyntax, attribute);
         }
+
     }
 
     public abstract class MetadataAttributeGenerator : StandardAttributeGenerator<MetadataAttribute> {
+
         public override Func<Dictionary<string, object>, ClassDeclarationSyntax, TypeSyntax, MetadataAttribute> of() => (
             d,
             c,
             t) => MetadataAttribute.of(
             d
         );
+
     }
 
     public abstract class ListAttributeGenerator : StandardAttributeGenerator<ListMetadataAttribute> {
+
         public override Func<Dictionary<string, object>, ClassDeclarationSyntax, TypeSyntax, ListMetadataAttribute> of() => (
             d,
             c,
@@ -1055,9 +1064,11 @@ namespace {@namespace!.ToString()} {'{'}
             }
             return listMetadataAttribute;
         };
+
     }
 
     public abstract class MapAttributeGenerator : StandardAttributeGenerator<MapMetadataAttribute> {
+
         public override Func<Dictionary<string, object>, ClassDeclarationSyntax, TypeSyntax, MapMetadataAttribute> of() => (
             d,
             c,
@@ -1091,137 +1102,175 @@ namespace {@namespace!.ToString()} {'{'}
             }
             return mapMetadataAttribute;
         };
+
     }
 
     [Generator]
     public sealed class GetGenerator : MetadataAttributeGenerator {
+
         public override string getAttributeName() => nameof(GetAttribute);
 
         public override Func<string, string, string, MetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateGetMethod;
+
     }
 
     [Generator]
     public sealed class IsGenerator : MetadataAttributeGenerator {
+
         public override string getAttributeName() => nameof(IsAttribute);
 
         public override Func<string, string, string, MetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateIsMethod;
+
     }
 
     [Generator]
     public sealed class OpenGenerator : MetadataAttributeGenerator {
+
         public override string getAttributeName() => nameof(OpenAttribute);
 
         public override Func<string, string, string, MetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateOpenMethod;
+
     }
 
     [Generator]
     public sealed class SetGenerator : MetadataAttributeGenerator {
+
         public override string getAttributeName() => nameof(SetAttribute);
 
         public override Func<string, string, string, MetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateSetMethod;
+
     }
 
     [Generator]
     public sealed class IndexGenerator : ListAttributeGenerator {
+
         private static readonly string getAtName = nameof(IndexAttribute);
 
         public override string getAttributeName() => nameof(IndexAttribute);
 
         public override Func<string, string, string, ListMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateGetAtMethod;
+
     }
 
     [Generator]
     public sealed class AddGenerator : ListAttributeGenerator {
+
         public override string getAttributeName() => nameof(AddAttribute);
 
         public override Func<string, string, string, ListMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateAddMethod;
+
     }
 
     [Generator]
     public sealed class RemoveGenerator : ListAttributeGenerator {
+
         public override string getAttributeName() => nameof(RemoveAttribute);
 
         public override Func<string, string, string, ListMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateRemoveMethod;
+
     }
 
     [Generator]
     public sealed class ContainGenerator : ListAttributeGenerator {
+
         public override string getAttributeName() => nameof(ContainAttribute);
 
         public override Func<string, string, string, ListMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateContainMethod;
+
     }
 
     [Generator]
     public sealed class ForGenerator : ListAttributeGenerator {
+
         public override string getAttributeName() => nameof(ForAttribute);
 
         public override Func<string, string, string, ListMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateForMethod;
+
     }
 
     [Generator]
     public sealed class PutGenerator : MapAttributeGenerator {
+
         public override string getAttributeName() => nameof(PutAttribute);
 
         public override Func<string, string, string, MapMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreatePutMethod;
+
     }
 
     [Generator]
     public sealed class MapGetGenerator : MapAttributeGenerator {
+
         public override string getAttributeName() => nameof(MapGetAttribute);
 
         public override Func<string, string, string, MapMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateMapGetMethod;
+
     }
 
     [Generator]
     public sealed class RemoveKeyGenerator : MapAttributeGenerator {
+
         public override string getAttributeName() => nameof(RemoveKeyAttribute);
 
         public override Func<string, string, string, MapMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateRemoveKeyMethod;
+
     }
 
     [Generator]
     public sealed class RemoveValueGenerator : MapAttributeGenerator {
+
         public override string getAttributeName() => nameof(RemoveValueAttribute);
 
         public override Func<string, string, string, MapMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateRemoveValueMethod;
+
     }
 
     [Generator]
     public sealed class ContainKeyGenerator : MapAttributeGenerator {
+
         public override string getAttributeName() => nameof(ContainKeyAttribute);
 
         public override Func<string, string, string, MapMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateContainKeyMethod;
+
     }
 
     [Generator]
     public sealed class ContainValueGenerator : MapAttributeGenerator {
+
         public override string getAttributeName() => nameof(ContainValueAttribute);
 
         public override Func<string, string, string, MapMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateContainValueMethod;
+
     }
 
     [Generator]
     public sealed class ForKeyGenerator : MapAttributeGenerator {
+
         public override string getAttributeName() => nameof(ForKeyAttribute);
 
         public override Func<string, string, string, MapMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateForKeyMethod;
+
     }
 
     [Generator]
     public sealed class ForValueGenerator : MapAttributeGenerator {
+
         public override string getAttributeName() => nameof(ForValueAttribute);
 
         public override Func<string, string, string, MapMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateForValueMethod;
+
     }
 
     [Generator]
     public sealed class ForAllGenerator : MapAttributeGenerator {
+
         public override string getAttributeName() => nameof(ForAllAttribute);
 
         public override Func<string, string, string, MapMetadataAttribute, MethodDeclarationSyntax> createMethodDeclarationSyntax() => CreateMethodUtil.CreateForAllMethod;
+
     }
 
     public static class CreateMethodUtil {
+
         public static SourceText CreatePartialClass(
             NameSyntax @namespace,
             ClassDeclarationSyntax classDeclaration,
@@ -1385,6 +1434,87 @@ namespace {@namespace!.ToString()} {'{'}
             );
         }
 
+        public static MethodDeclarationSyntax methodDeclarationSyntaxes(MethodDeclarationSyntax methodDeclarationSyntax, MetadataAttribute metadataAttribute) {
+            switch (metadataAttribute.accessLevel) {
+                case AccessLevel.Private:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers(
+                        Token(
+                            SyntaxKind.PrivateKeyword
+                        )
+                    );
+                    break;
+                case AccessLevel.Protected:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers(
+                        Token(
+                            SyntaxKind.ProtectedKeyword
+                        )
+                    );
+                    break;
+                case AccessLevel.ProtectedInternal:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers(
+                        Token(
+                            SyntaxKind.ProtectedKeyword
+                        ),
+                        Token(
+                            SyntaxKind.InternalKeyword
+                        )
+                    );
+                    break;
+                case AccessLevel.Internal:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers(
+                        Token(
+                            SyntaxKind.InternalKeyword
+                        )
+                    );
+                    break;
+                case AccessLevel.Public:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers(
+                        Token(
+                            SyntaxKind.PublicKeyword
+                        )
+                    );
+                    break;
+            }
+
+            switch (metadataAttribute.methodType) {
+                case MethodType.def:
+                    break;
+                case MethodType.Abstract:
+                    methodDeclarationSyntax = methodDeclarationSyntax.WithBody(null)
+                        .AddModifiers(
+                            Token(
+                                SyntaxKind.AbstractKeyword
+                            )
+                        )
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+                    break;
+                case MethodType.Partial:
+                    methodDeclarationSyntax = methodDeclarationSyntax.WithBody(null)
+                        .AddModifiers(
+                            Token(
+                                SyntaxKind.PartialKeyword
+                            )
+                        )
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+                    break;
+                case MethodType.Override:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers(
+                        Token(
+                            SyntaxKind.OverrideKeyword
+                        )
+                    );
+                    break;
+                case MethodType.Virtual:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers(
+                        Token(
+                            SyntaxKind.VirtualKeyword
+                        )
+                    );
+                    break;
+            }
+            return methodDeclarationSyntax;
+        }
+
         public static StatementSyntax noNull(
             string fieldName,
             string? message = null) {
@@ -1446,11 +1576,6 @@ namespace {@namespace!.ToString()} {'{'}
                     ),
                     "get" + fieldName.ToPascalCaseIdentifier()
                 )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
-                )
                 .WithBody(
                     Block(
                         new List<StatementSyntax>() {
@@ -1486,11 +1611,6 @@ namespace {@namespace!.ToString()} {'{'}
                         typeName
                     ),
                     "is" + fieldName.ToPascalCaseIdentifier()
-                )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
                 )
                 .WithBody(
                     Block(
@@ -1531,11 +1651,6 @@ namespace {@namespace!.ToString()} {'{'}
                             "void"
                         ),
                     "open" + fieldName.ToPascalCaseIdentifier()
-                )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
                 )
                 .AddParameterListParameters(
                     Parameter(
@@ -1618,11 +1733,6 @@ namespace {@namespace!.ToString()} {'{'}
                         ),
                     "set" + fieldName.ToPascalCaseIdentifier()
                 )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
-                )
                 .AddParameterListParameters(
                     Parameter(
                             Identifier(
@@ -1696,11 +1806,6 @@ namespace {@namespace!.ToString()} {'{'}
                     ),
                     $"indexIn{fieldName.ToPascalCaseIdentifier()}"
                 )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
-                )
                 .AddParameterListParameters(
                     Parameter(
                             Identifier(
@@ -1756,11 +1861,6 @@ namespace {@namespace!.ToString()} {'{'}
                             "void"
                         ),
                     $"addIn{fieldName.ToPascalCaseIdentifier().genericEliminate()}"
-                )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
                 )
                 .AddParameterListParameters(
                     Parameter(
@@ -1848,11 +1948,6 @@ namespace {@namespace!.ToString()} {'{'}
                         ),
                     $"removeIn{fieldName.ToPascalCaseIdentifier()}"
                 )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
-                )
                 .AddParameterListParameters(
                     Parameter(
                             Identifier(
@@ -1928,11 +2023,6 @@ namespace {@namespace!.ToString()} {'{'}
                     ),
                     $"contaIn{fieldName.ToPascalCaseIdentifier()}"
                 )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
-                )
                 .AddParameterListParameters(
                     Parameter(
                             Identifier(
@@ -2001,11 +2091,6 @@ namespace {@namespace!.ToString()} {'{'}
                     ),
                     $"for{fieldName.ToPascalCaseIdentifier()}"
                 )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
-                )
                 .WithBody(
                     Block(
                         new StatementSyntax[] {
@@ -2068,11 +2153,6 @@ namespace {@namespace!.ToString()} {'{'}
                             "void"
                         ),
                     $"putIn{fieldName.ToPascalCaseIdentifier()}"
-                )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
                 )
                 .AddParameterListParameters(
                     Parameter(
@@ -2226,11 +2306,6 @@ namespace {@namespace!.ToString()} {'{'}
                     ),
                     $"getIn{fieldName.ToPascalCaseIdentifier()}"
                 )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
-                )
                 .AddParameterListParameters(
                     Parameter(
                             Identifier(
@@ -2326,11 +2401,6 @@ namespace {@namespace!.ToString()} {'{'}
                             ),
                         $"removeKeyIn{fieldName.ToPascalCaseIdentifier()}"
                     )
-                    .AddModifiers(
-                        Token(
-                            SyntaxKind.PublicKeyword
-                        )
-                    )
                     .AddParameterListParameters(
                         Parameter(
                                 Identifier(
@@ -2405,11 +2475,6 @@ namespace {@namespace!.ToString()} {'{'}
                             ),
                         $"removeValueIn{fieldName.ToPascalCaseIdentifier()}"
                     )
-                    .AddModifiers(
-                        Token(
-                            SyntaxKind.PublicKeyword
-                        )
-                    )
                     .AddParameterListParameters(
                         Parameter(
                                 Identifier(
@@ -2480,11 +2545,6 @@ namespace {@namespace!.ToString()} {'{'}
                     ),
                     $"containKeyIn{fieldName.ToPascalCaseIdentifier()}"
                 )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
-                )
                 .AddParameterListParameters(
                     Parameter(
                             Identifier(
@@ -2549,11 +2609,6 @@ namespace {@namespace!.ToString()} {'{'}
                     ),
                     $"containValueIn{fieldName.ToPascalCaseIdentifier()}"
                 )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
-                )
                 .AddParameterListParameters(
                     Parameter(
                             Identifier(
@@ -2617,11 +2672,6 @@ namespace {@namespace!.ToString()} {'{'}
                         $"IEnumerable<{mapMetadataAttribute.keyType}>"
                     ),
                     $"for{fieldName.ToPascalCaseIdentifier()}Key"
-                )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
                 )
                 .WithBody(
                     Block(
@@ -2694,11 +2744,6 @@ namespace {@namespace!.ToString()} {'{'}
                     ),
                     $"for{fieldName.ToPascalCaseIdentifier()}Value"
                 )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
-                )
                 .WithBody(
                     Block(
                         new StatementSyntax[] {
@@ -2770,11 +2815,6 @@ namespace {@namespace!.ToString()} {'{'}
                     ),
                     $"for{fieldName.ToPascalCaseIdentifier()}"
                 )
-                .AddModifiers(
-                    Token(
-                        SyntaxKind.PublicKeyword
-                    )
-                )
                 .WithBody(
                     Block(
                         new StatementSyntax[] {
@@ -2822,5 +2862,7 @@ namespace {@namespace!.ToString()} {'{'}
                     )
                 );
         }
+
     }
+
 }

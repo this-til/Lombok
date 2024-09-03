@@ -315,12 +315,12 @@ namespace {namespace}{{
         [ToStringField]
         [EqualsField]
         [HashCodeField]
-        public int a;
+        public int a, _a, _aa = 0;
 
         [ToStringField]
         [EqualsField]
         [HashCodeField]
-        public int b;
+        public int b { get; set; }
 
         [ToStringField]
         [EqualsField]

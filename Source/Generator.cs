@@ -197,7 +197,7 @@ namespace Til.Lombok {
                             nameof(HashCodeFieldAttribute)
                         );
                         if (tryGetSpecifiedAttribute is not null) {
-                            toString.Add(
+                            hashCode.Add(
                                 propertyDeclaration
                             );
                         }
@@ -205,7 +205,7 @@ namespace Til.Lombok {
                             nameof(EqualsFieldAttribute)
                         );
                         if (tryGetSpecifiedAttribute is not null) {
-                            toString.Add(
+                            equals.Add(
                                 propertyDeclaration
                             );
                         }
@@ -239,7 +239,12 @@ namespace Til.Lombok {
                         string.Join(
                             ",",
                             toString.Select(
-                                s => $"{s}={{this.{s}}}"
+                                s => {
+                                    string fieldName = s is VariableDeclaratorSyntax _variableDeclaratorSyntax
+                                        ? _variableDeclaratorSyntax.Identifier.Text
+                                        : ((PropertyDeclarationSyntax)s).Identifier.Text;
+                                    return $"{fieldName}={{this.{fieldName}}}";
+                                }
                             )
                         )
                     )
@@ -328,6 +333,10 @@ namespace Til.Lombok {
                               .Symbol as ITypeSymbol)?.IsValueType
                           ?? false;
 
+                    string fieldName = se is VariableDeclaratorSyntax _variableDeclaratorSyntax
+                            ? _variableDeclaratorSyntax.Identifier.Text
+                            : ((PropertyDeclarationSyntax)se).Identifier.Text;
+
                     list.Add(
                         ExpressionStatement(
                             AssignmentExpression(
@@ -357,7 +366,7 @@ namespace Til.Lombok {
                                                     SyntaxKind.SimpleMemberAccessExpression,
                                                     ThisExpression(),
                                                     IdentifierName(
-                                                        se.ToString()
+                                                        fieldName
                                                     )
                                                 ),
                                                 IdentifierName(
@@ -453,6 +462,11 @@ namespace Til.Lombok {
                 List<InvocationExpressionSyntax> list = new List<InvocationExpressionSyntax>();
 
                 foreach (var equal in equals) {
+                    
+                    string fieldName = equal is VariableDeclaratorSyntax _variableDeclaratorSyntax
+                        ? _variableDeclaratorSyntax.Identifier.Text
+                        : ((PropertyDeclarationSyntax)equal).Identifier.Text;
+                    
                     list.Add(
                         InvocationExpression(
                             MemberAccessExpression(
@@ -469,7 +483,7 @@ namespace Til.Lombok {
                                     new[] {
                                         Argument(
                                             IdentifierName(
-                                                equal.ToString()
+                                                fieldName
                                             )
                                         ),
                                         Argument(
@@ -479,7 +493,7 @@ namespace Til.Lombok {
                                                     "_obj"
                                                 ),
                                                 IdentifierName(
-                                                    equal.ToString()
+                                                    fieldName
                                                 )
                                             )
                                         )

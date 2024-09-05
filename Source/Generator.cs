@@ -334,8 +334,8 @@ namespace Til.Lombok {
                           ?? false;
 
                     string fieldName = se is VariableDeclaratorSyntax _variableDeclaratorSyntax
-                            ? _variableDeclaratorSyntax.Identifier.Text
-                            : ((PropertyDeclarationSyntax)se).Identifier.Text;
+                        ? _variableDeclaratorSyntax.Identifier.Text
+                        : ((PropertyDeclarationSyntax)se).Identifier.Text;
 
                     list.Add(
                         ExpressionStatement(
@@ -462,11 +462,11 @@ namespace Til.Lombok {
                 List<InvocationExpressionSyntax> list = new List<InvocationExpressionSyntax>();
 
                 foreach (var equal in equals) {
-                    
+
                     string fieldName = equal is VariableDeclaratorSyntax _variableDeclaratorSyntax
                         ? _variableDeclaratorSyntax.Identifier.Text
                         : ((PropertyDeclarationSyntax)equal).Identifier.Text;
-                    
+
                     list.Add(
                         InvocationExpression(
                             MemberAccessExpression(
@@ -636,46 +636,72 @@ namespace Til.Lombok {
                 );
             }
 
-            string model =
-                $@"using System.Collections.Generic;
+            Dictionary<string, string> fill = new Dictionary<string, string>() {
+                { "type", contextTargetNode.toClassName() },
+                { "namespace", @namespace!.ToString() }
+            };
+
+            string model = @"
+
+namespace {namespace} {{
+
+    public partial class {type} : Til.Lombok.IFreeze {{
+
+        protected System.Collections.Generic.HashSet<string> _frozen = new System.Collections.Generic.HashSet<string>();
+
+        public bool isFrozen(string tag) => _frozen.Contains(tag);
+
+        public void frozen(string tag) => _frozen.Add(tag);
+
+        protected void unFrozen(string tag) => _frozen.Remove(tag);
+
+        public void validateNonFrozen(string tag) {{
+            if (isFrozen(tag)) {{
+                throw new System.InvalidOperationException(""Cannot modify frozen property"");
+            }}
+        }}
+
+    }}
+}}
+
+";
+
+            StringBuilder stringBuilder = new StringBuilder();
+
+            model.format(
+                stringBuilder,
+                k => stringBuilder.Append(
+                    fill[k]
+                )
+            );
+
+            /*string model =
+                @"using System.Collections.Generic;
 using Til.Lombok;
 using System;
 
-namespace {@namespace.ToString()} {'{'}
+namespace {@namespace.ToString()} {{
 
-    public partial class {contextTargetNode.toClassName()} : IFreeze {'{'}
-        protected Dictionary<string, bool> _frozen = new Dictionary<string, bool>();
-    
-        public bool isFrozen(string tag) {'{'}
-            if (_frozen.ContainsKey(tag)) {'{'}
-                return _frozen[tag];
-            {'}'}
-            _frozen.Add(tag, false);
-            return false;
-        {'}'}
-    
-        public void frozen(string tag) {'{'}
-            if (_frozen.ContainsKey(tag)) {'{'}
-                _frozen[tag] = true;
-                return;
-            {'}'}
-            _frozen.Add(tag, true);
-        {'}'}
-    
-        public void validateNonFrozen(string tag) {'{'}
-            if (_frozen.ContainsKey(tag) && _frozen[tag]) {'{'}
-                throw new InvalidOperationException(""Cannot modify frozen property"");
-            {'}'}
-        {'}'}
-    {'}'}
-{'}'}";
+    public partial class {contextTargetNode.toClassName()} : IFreeze {{
+        public partial class Model {{
+            protected HashSet<string> _frozen = new HashSet<string>();
+            public bool isFrozen(string tag) => _frozen.Contains(tag);
+            public void frozen(string tag) => _frozen.Add(tag);
+            public void validateNonFrozen(string tag) {{
+                if (isFrozen(tag)) {{
+                    throw new InvalidOperationException("Cannot modify frozen property");
+                }}
+            }}
+        }}
+    }}
+}}"";*/
 
             return new GeneratorResult(
                 contextTargetNode.GetHintName(
                     @namespace
                 ),
                 SourceText.From(
-                    model,
+                    stringBuilder.ToString(),
                     Encoding.UTF8
                 )
             );
@@ -1531,8 +1557,39 @@ namespace {@namespace!.ToString()} {'{'}
 
         public static StatementSyntax noNull(
             string fieldName,
-            string? message = null) {
-            return ExpressionStatement(
+            string message) {
+
+            return IfStatement(
+                BinaryExpression(
+                    SyntaxKind.EqualsExpression,
+                    IdentifierName(fieldName),
+                    LiteralExpression(SyntaxKind.NullLiteralExpression)
+                ),
+                Block(
+                    ThrowStatement(
+                        ObjectCreationExpression(
+                            ParseTypeName("System.NullReferenceException"),
+                            ArgumentList(
+                                SeparatedList(
+                                    new[] {
+                                        Argument(
+                                            LiteralExpression(
+                                                SyntaxKind.StringLiteralExpression,
+                                                Literal(
+                                                    message
+                                                )
+                                            )
+                                        )
+                                    }
+                                )
+                            ),
+                            null
+                        )
+                    )
+                )
+            );
+
+            /*return ExpressionStatement(
                 InvocationExpression(
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
@@ -1553,21 +1610,21 @@ namespace {@namespace!.ToString()} {'{'}
                         ),
                         IdentifierName(
                             nameof(Util.noNull)
-                        ) // 方法名  
+                        ) // 方法名
                     ),
-                    ArgumentList( // 创建参数列表  
+                    ArgumentList( // 创建参数列表
                         SeparatedList(
                             new[] {
-                                Argument( // 创建一个参数表达式  
+                                Argument( // 创建一个参数表达式
                                     IdentifierName(
                                         fieldName
-                                    ) // 引用参数i  
+                                    ) // 引用参数i
                                 ),
                                 message is not null
-                                    ? Argument( // 创建一个参数表达式  
+                                    ? Argument( // 创建一个参数表达式
                                         IdentifierName(
                                             $"\"{message}\""
-                                        ) // 引用参数i  
+                                        ) // 引用参数i
                                     )
                                     : null!
                             }.Where(
@@ -1576,7 +1633,7 @@ namespace {@namespace!.ToString()} {'{'}
                         )
                     )
                 )
-            );
+            );*/
         }
 
         public static MethodDeclarationSyntax CreateGetMethod(

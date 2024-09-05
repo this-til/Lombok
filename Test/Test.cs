@@ -419,26 +419,16 @@ namespace {namespace}{{
 
     public partial class Model {
 
-        protected Dictionary<string, bool> _frozen = new Dictionary<string, bool>();
+        protected HashSet<string> _frozen = new HashSet<string>();
 
-        public bool isFrozen(string tag) {
-            if (_frozen.ContainsKey(tag)) {
-                return _frozen[tag];
-            }
-            _frozen.Add(tag, false);
-            return false;
-        }
+        public bool isFrozen(string tag) => _frozen.Contains(tag);
 
-        public void frozen(string tag) {
-            if (_frozen.ContainsKey(tag)) {
-                _frozen[tag] = true;
-                return;
-            }
-            _frozen.Add(tag, true);
-        }
+        public void frozen(string tag) => _frozen.Add(tag);
+
+        protected void unFrozen(string tag) => _frozen.Remove(tag);
 
         public void validateNonFrozen(string tag) {
-            if (_frozen.ContainsKey(tag) && _frozen[tag]) {
+            if (isFrozen(tag)) {
                 throw new InvalidOperationException("Cannot modify frozen property");
             }
         }

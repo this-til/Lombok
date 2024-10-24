@@ -381,7 +381,7 @@ namespace Til.Lombok {
                                                     SyntaxKind.SimpleMemberAccessExpression,
                                                     ThisExpression(),
                                                     IdentifierName(
-                                                        se.ToString()
+                                                        fieldName
                                                     )
                                                 ),
                                                 InvocationExpression(
@@ -2092,7 +2092,7 @@ namespace {@namespace!.ToString()} {'{'}
                     IdentifierName(
                         "bool"
                     ),
-                    $"contaIn{fieldName.ToPascalCaseIdentifier()}"
+                    $"containIn{fieldName.ToPascalCaseIdentifier()}"
                 )
                 .AddParameterListParameters(
                     Parameter(
@@ -2158,7 +2158,7 @@ namespace {@namespace!.ToString()} {'{'}
             ListMetadataAttribute listMetadataAttribute) {
             return MethodDeclaration(
                     IdentifierName(
-                        $"IEnumerable<{listMetadataAttribute.type}>"
+                        $"System.Collections.Generic.IEnumerable<{listMetadataAttribute.type}>"
                     ),
                     $"for{fieldName.ToPascalCaseIdentifier()}"
                 )
@@ -2740,7 +2740,7 @@ namespace {@namespace!.ToString()} {'{'}
             MapMetadataAttribute mapMetadataAttribute) {
             return MethodDeclaration(
                     IdentifierName(
-                        $"IEnumerable<{mapMetadataAttribute.keyType}>"
+                        $"System.Collections.Generic.IEnumerable<{mapMetadataAttribute.keyType}>"
                     ),
                     $"for{fieldName.ToPascalCaseIdentifier()}Key"
                 )
@@ -2811,7 +2811,7 @@ namespace {@namespace!.ToString()} {'{'}
             MapMetadataAttribute mapMetadataAttribute) {
             return MethodDeclaration(
                     IdentifierName(
-                        $"IEnumerable<{mapMetadataAttribute.valueType}>"
+                        $"System.Collections.Generic.IEnumerable<{mapMetadataAttribute.valueType}>"
                     ),
                     $"for{fieldName.ToPascalCaseIdentifier()}Value"
                 )
@@ -2882,7 +2882,7 @@ namespace {@namespace!.ToString()} {'{'}
             MapMetadataAttribute mapMetadataAttribute) {
             return MethodDeclaration(
                     IdentifierName(
-                        $"IEnumerable<KeyValuePair<{mapMetadataAttribute.keyType}, {mapMetadataAttribute.valueType}>>"
+                        $"System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<{mapMetadataAttribute.keyType}, {mapMetadataAttribute.valueType}>>"
                     ),
                     $"for{fieldName.ToPascalCaseIdentifier()}"
                 )

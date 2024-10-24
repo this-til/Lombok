@@ -335,12 +335,12 @@ namespace {namespace}{{
         [ToStringField]
         [EqualsField]
         [HashCodeField]
-        public List<string> bb;
+        public List<string> bb = new List<string>();
 
         [ToStringField]
         [EqualsField]
         [HashCodeField]
-        public KeyValuePair<object, object> kv;
+        public KeyValuePair<object, object> kv = new KeyValuePair<object, object>();
 
     }
 

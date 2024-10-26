@@ -25,4 +25,8 @@
         <ProjectReference Include="../Lombok.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="obj\Debug\" />
+    </ItemGroup>
+
 </Project>

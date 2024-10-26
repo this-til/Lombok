@@ -3,6 +3,114 @@ using System.Collections.Generic;
 
 namespace Til.Lombok.Test {
 
+    [ILombok]
+    [IFreeze]
+    public partial class Demo {
+
+        [Get]
+        [Get(customName = "getIndex")]
+        [Get(customPrefix = "getter")]
+        [Get(customType = "object", customSuffix = "AsObject")]
+        [Set]
+        [Set(accessLevel = AccessLevel.Protected, customSuffix = "Internal", noNull = true)]
+        [Open]
+        protected int id;
+
+        [Get(link = true)]
+        [Set(link = true)]
+        [Open(link = true, noNull = true)]
+        protected int age;
+
+        [Get]
+        [Set]
+        [Open]
+        protected double points;
+
+        [Get]
+        [Set]
+        [Open]
+        protected double balance;
+
+        [Get]
+        [Set]
+        [Add]
+        [Index]
+        [Contain]
+        [Count]
+        [Remove]
+        [For]
+        protected List<int> aIntList = new List<int>();
+
+        [Get]
+        [Set]
+        [MapGet]
+        [ContainKey]
+        [ContainValue]
+        [RemoveKey]
+        [RemoveValue]
+        [ForAll]
+        [ForKey]
+        [ForValue]
+        protected Dictionary<string, string> dictionary = new Dictionary<string, string>();
+
+        [ILombok]
+        [IPartial
+        (
+            model = @"
+protected static {type} instance;
+
+public static {type} getInstance() {{
+    instance ??= new {type}();
+    return instance;
+}}
+"
+        )]
+        [IPartial
+        (
+            model = @"
+namespace {namespace}{{
+    public static class {type}EE {{
+        private static Demo.{type} instance;
+        
+        public static Demo.{type} getInstance() {{
+            instance ??= new Demo.{type}();
+            return instance;
+        }}
+    }}
+}}
+",
+            partialPos = PartialPos.Compilation
+        )]
+        [IPartial
+        (
+            model = @"
+public static class {type}EEE {{
+    private static Demo.{type} instance;
+    
+    public static Demo.{type} getInstance() {{
+        instance ??= new Demo.{type}();
+        return instance;
+    }}
+}}
+",
+            partialPos = PartialPos.Namespace
+        )]
+        public partial class SonDemo {
+
+            [Get]
+            [Get(customName = "getIndex")]
+            [Get(customPrefix = "getter")]
+            [Get(customType = "object", customSuffix = "AsObject")]
+            [Set]
+            [Set(accessLevel = AccessLevel.Protected, customSuffix = "Internal", noNull = true)]
+            [Open]
+            protected int id;
+
+        }
+
+    }
+
+    /*
     [ILombok] // 引入注释才能被扫描到类
     public partial class Demo1 {
 
@@ -220,7 +328,6 @@ namespace Til.Lombok.Test {
     [ILombok]
     public partial class Demo17 {
 
-        [Is]
         protected bool a;
 
     }
@@ -266,21 +373,10 @@ namespace Til.Lombok.Test {
     [ISelf]
     public partial class Demo19_2 {
     }
-    */
+    #1#
 
-    [ILombok]
-    [ISelf(instantiation = "Demo20.of()")]
-    public partial class Demo20 {
 
-        public static Demo20 of() => new Demo20();
 
-    }
-
-    [ILombok]
-    [IPack]
-    public partial class Demo21 {
-
-    }
 
     [IPartial(
         model = @"
@@ -344,26 +440,6 @@ namespace {namespace}{{
 
     }
 
-    [ILombok]
-    public abstract partial class Demo24 {
-
-        [Get(accessLevel = AccessLevel.Private)]
-        public int a;
-
-        [Get(accessLevel = AccessLevel.ProtectedInternal)]
-        public int b;
-
-        [Get(methodType = MethodType.Partial)]
-        public int c;
-
-        [Get(methodType = MethodType.Abstract)]
-        public int d;
-
-        public partial int getC() {
-            return d;
-        }
-
-    }
 
     /*
     [ILombok]
@@ -371,7 +447,7 @@ namespace {namespace}{{
     public partial class Demo16 {
         [Get(freezeTag = CS.aabb)] public int a;
     }
-    */
+    #1#
 
     public class CS {
 
@@ -403,19 +479,19 @@ namespace {namespace}{{
 
         [Get] [Index] [Set] [Add] [Remove] [Contain] [For(useYield = true)]
         public List<List<int>> twoList;
-        #1#
+        #2#
 
         [Get] [Set] [Put] [MapGet] [RemoveKey] [ContainKey] [ContainValue] [ForKey] [ForValue] [ForAll]
         public Dictionary<string, string> map = new Dictionary<string, string>();
     }
-    */
+    #1#
     /*
     [ILombok]
     [IFreeze]
     public partial class GT<T> {
         [Get] [Set(link = true)] private int a;
     }
-    */
+    #1#
 
     public partial class Model {
 
@@ -433,6 +509,6 @@ namespace {namespace}{{
             }
         }
 
-    }
+    }*/
 
 }

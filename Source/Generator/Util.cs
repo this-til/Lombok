@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -13,7 +14,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-namespace Til.Lombok {
+namespace Til.Lombok.Generator {
 
     /// <summary>
     /// Extensions for <see cref="IncrementalGeneratorInitializationContext"/>.
@@ -102,9 +103,12 @@ namespace Til.Lombok {
             [AccessTypes.Public] = SyntaxKind.PublicKeyword
         };
 
-        public static readonly SyntaxTriviaList NullableTrivia = TriviaList(
-            Trivia(
-                NullableDirectiveTrivia(
+        public static readonly SyntaxTriviaList NullableTrivia = TriviaList
+        (
+            Trivia
+            (
+                NullableDirectiveTrivia
+                (
                     Token(SyntaxKind.EnableKeyword),
                     true
                 )
@@ -119,7 +123,7 @@ namespace Til.Lombok {
         /// <param name="node">The syntax node to traverse.</param>
         /// <returns>The namespace this syntax node is in. <code>null</code> if a namespace cannot be found.</returns>
         public static NameSyntax? GetNamespace(this SyntaxNode node) {
-            var parent = node.Parent;
+            SyntaxNode? parent = node.Parent;
             while (parent != null) {
                 if (parent is BaseNamespaceDeclarationSyntax ns) {
                     return ns.Name;
@@ -137,7 +141,7 @@ namespace Til.Lombok {
         /// <param name="node">The staring point.</param>
         /// <returns>A list of using directives.</returns>
         public static SyntaxList<UsingDirectiveSyntax> GetUsings(this SyntaxNode node) {
-            var parent = node.Parent;
+            SyntaxNode? parent = node.Parent;
             while (parent is not null) {
                 if (parent is BaseNamespaceDeclarationSyntax ns && ns.Usings.Any()) {
                     return ns.Usings;
@@ -186,14 +190,20 @@ namespace Til.Lombok {
         /// <param name="type">The type to clone.</param>
         /// <returns>A new partial class with a few of the original types traits.</returns>
         public static ClassDeclarationSyntax CreateNewPartialClass(this TypeDeclarationSyntax type) {
-            var declaration = ClassDeclaration(type.Identifier.Text)
-                .WithModifiers(
-                    TokenList(
+            ClassDeclarationSyntax declaration = ClassDeclaration(type.Identifier.Text)
+                .WithModifiers
+                (
+                    TokenList
+                    (
                         Token(type.GetAccessibilityModifier()),
                         Token(SyntaxKind.PartialKeyword)
                     )
                 )
-                .WithTypeParameterList(type.TypeParameterList);
+                .WithTypeParameterList(type.TypeParameterList)
+                .WithMembers
+                (
+                    List<MemberDeclarationSyntax>()
+                );
             if (type.ShouldEmitNrtTrivia()) {
                 declaration = declaration.WithLeadingTrivia(NullableTrivia);
             }
@@ -229,9 +239,11 @@ namespace Til.Lombok {
         /// <param name="type">The type to clone.</param>
         /// <returns>A new partial struct with a few of the original types traits.</returns>
         public static StructDeclarationSyntax CreateNewPartialStruct(this TypeDeclarationSyntax type) {
-            var declaration = StructDeclaration(type.Identifier.Text)
-                .WithModifiers(
-                    TokenList(
+            StructDeclarationSyntax declaration = StructDeclaration(type.Identifier.Text)
+                .WithModifiers
+                (
+                    TokenList
+                    (
                         Token(type.GetAccessibilityModifier()),
                         Token(SyntaxKind.PartialKeyword)
                     )
@@ -250,9 +262,11 @@ namespace Til.Lombok {
         /// <param name="type">The type to clone.</param>
         /// <returns>A new partial interface with a few of the original types traits.</returns>
         public static InterfaceDeclarationSyntax CreateNewPartialInterface(this TypeDeclarationSyntax type) {
-            var declaration = InterfaceDeclaration(type.Identifier.Text)
-                .WithModifiers(
-                    TokenList(
+            InterfaceDeclarationSyntax declaration = InterfaceDeclaration(type.Identifier.Text)
+                .WithModifiers
+                (
+                    TokenList
+                    (
                         Token(type.GetAccessibilityModifier()),
                         Token(SyntaxKind.PartialKeyword)
                     )
@@ -270,15 +284,19 @@ namespace Til.Lombok {
         }
 
         public static CompilationUnitSyntax CreateNewNamespace(this NameSyntax @namespace, SyntaxList<UsingDirectiveSyntax> usings, MemberDeclarationSyntax innerMember) {
-            var newNamespace = FileScopedNamespaceDeclaration(@namespace)
-                .WithMembers(
+            FileScopedNamespaceDeclarationSyntax newNamespace = FileScopedNamespaceDeclaration(@namespace)
+                .WithMembers
+                (
                     SingletonList(innerMember)
                 );
             if (usings.Any()) {
-                var newUsing = usings[0]
-                    .WithUsingKeyword(
-                        Token(
-                            TriviaList(
+                UsingDirectiveSyntax newUsing = usings[0]
+                    .WithUsingKeyword
+                    (
+                        Token
+                        (
+                            TriviaList
+                            (
                                 AutoGeneratedComment
                             ),
                             SyntaxKind.UsingKeyword,
@@ -288,9 +306,12 @@ namespace Til.Lombok {
                 usings = usings.Replace(usings[0], newUsing);
             }
             else {
-                newNamespace = newNamespace.WithNamespaceKeyword(
-                    Token(
-                        TriviaList(
+                newNamespace = newNamespace.WithNamespaceKeyword
+                (
+                    Token
+                    (
+                        TriviaList
+                        (
                             AutoGeneratedComment
                         ),
                         SyntaxKind.NamespaceKeyword,
@@ -301,7 +322,8 @@ namespace Til.Lombok {
 
             return CompilationUnit()
                 .WithUsings(usings)
-                .WithMembers(
+                .WithMembers
+                (
                     SingletonList<MemberDeclarationSyntax>(newNamespace)
                 );
         }
@@ -373,7 +395,7 @@ namespace Til.Lombok {
         /// <exception cref="ArgumentOutOfRangeException">If an access modifier is supplied which is not supported.</exception>
         public static IEnumerable<T> Where<T>(this IEnumerable<T> members, AccessTypes accessType)
             where T : MemberDeclarationSyntax {
-            var predicateBuilder = PredicateBuilder.False<T>();
+            Expression<Func<T, bool>> predicateBuilder = PredicateBuilder.False<T>();
             foreach (AccessTypes t in typeof(AccessTypes).GetEnumValues()) {
                 if (accessType.HasFlag(t)) {
                     predicateBuilder = predicateBuilder.Or(m => m.Modifiers.Any(SyntaxKindsByAccessType[t]));
@@ -403,17 +425,17 @@ namespace Til.Lombok {
         }
 
         public static SyntaxTriviaList GetLeadingTriviaFromMultipleLocations(this FieldDeclarationSyntax field) {
-            var typeTrivia = field.Declaration.Type.GetCommentTrivia();
+            SyntaxTriviaList typeTrivia = field.Declaration.Type.GetCommentTrivia();
             if (typeTrivia.Any()) {
                 return typeTrivia;
             }
 
-            var modifierTrivia = field.Modifiers.First().GetCommentTrivia();
+            SyntaxTriviaList modifierTrivia = field.Modifiers.First().GetCommentTrivia();
             if (modifierTrivia.Any()) {
                 return modifierTrivia;
             }
 
-            var attributeList = field.AttributeLists[0];
+            AttributeListSyntax attributeList = field.AttributeLists[0];
 
             return attributeList.OpenBracketToken.GetCommentTrivia();
         }
@@ -439,20 +461,20 @@ namespace Til.Lombok {
         }
 
         public static IEnumerable<INamedTypeSymbol> GetAllTypeSymbol(this INamespaceSymbol namespaceSymbol) {
-            var typeMemberList = namespaceSymbol.GetTypeMembers();
+            ImmutableArray<INamedTypeSymbol> typeMemberList = namespaceSymbol.GetTypeMembers();
 
-            foreach (var typeSymbol in typeMemberList) {
+            foreach (INamedTypeSymbol? typeSymbol in typeMemberList) {
                 yield return typeSymbol;
             }
 
-            foreach (var namespaceMember in namespaceSymbol.GetNamespaceMembers()) {
-                foreach (var typeSymbol in GetAllTypeSymbol(namespaceMember)) {
+            foreach (INamespaceSymbol? namespaceMember in namespaceSymbol.GetNamespaceMembers()) {
+                foreach (INamedTypeSymbol? typeSymbol in GetAllTypeSymbol(namespaceMember)) {
                     yield return typeSymbol;
                 }
             }
         }
 
-        public static AttributeSyntax? tryGetSpecifiedAttribute(this IEnumerable<AttributeListSyntax> attributeLists, string attributeName) {
+        public static IEnumerable<AttributeSyntax> tryGetSpecifiedAttribute(this IEnumerable<AttributeListSyntax> attributeLists, string attributeName) {
             string noAttribute = attributeName;
 
             if (attributeName.EndsWith("Attribute")) {
@@ -462,11 +484,10 @@ namespace Til.Lombok {
             foreach (AttributeListSyntax attributeList in attributeLists) {
                 foreach (AttributeSyntax attribute in attributeList.Attributes) {
                     if (attributeName.Equals(attribute.Name.ToString()) || noAttribute.Equals(attribute.Name.ToString())) {
-                        return attribute;
+                        yield return attribute;
                     }
                 }
             }
-            return null; // 没有找到指定的注解  
         }
 
         /// <summary>
@@ -475,13 +496,19 @@ namespace Til.Lombok {
         /// <param name="attribute"></param>
         /// <param name="semanticModel"></param>
         /// <returns></returns>
-        public static Dictionary<string, object> getAttributeArgumentsAsDictionary(this AttributeSyntax attribute, SemanticModel semanticModel) {
-            var dictionary = new Dictionary<string, object>();
+        public static Dictionary<string, string> getAttributeArgumentsAsDictionary(this AttributeSyntax attribute, SemanticModel semanticModel) {
+            Dictionary<string, string> dictionary = new Dictionary<string, string>();
 
             if (attribute.ArgumentList != null) {
-                foreach (var argument in attribute.ArgumentList.Arguments) {
-                    var key = argument.NameEquals?.Name.Identifier.ToString() ?? default;
-                    var value = ExtractAttributeValue(argument.Expression, semanticModel);
+                foreach (AttributeArgumentSyntax argument in attribute.ArgumentList.Arguments) {
+                    string? key = argument.NameEquals?.Name.Identifier.ToString() ?? default;
+                    if (key is null) {
+                        continue;
+                    }
+                    string? value = ExtractAttributeValue(argument.Expression, semanticModel);
+                    if (value is null) {
+                        continue;
+                    }
                     dictionary.Add(key, value);
                 }
             }
@@ -505,40 +532,54 @@ namespace Til.Lombok {
             return $"{className}<{genericParameters}>";
         }
 
-        public static object ExtractAttributeValue(ExpressionSyntax expression, SemanticModel semanticModel) {
-            // 如果是成员访问表达式（如ConstString.metadata）  
-            if (expression is MemberAccessExpressionSyntax memberAccess) {
-                // 获取成员访问的符号信息  
-                ISymbol symbol = semanticModel.GetSymbolInfo(memberAccess).Symbol;
+        public static string? ExtractAttributeValue(ExpressionSyntax expression, SemanticModel semanticModel) {
+            switch (expression) {
+                // 如果是成员访问表达式（如ConstString.metadata）    
+                case MemberAccessExpressionSyntax memberAccess: {
+                    // 获取成员访问的符号信息    
+                    ISymbol? symbol = semanticModel.GetSymbolInfo(memberAccess).Symbol;
 
-                // 如果符号是常量，则尝试获取其值  
-                if (symbol is IFieldSymbol fieldSymbol) {
-                    if (fieldSymbol.ContainingType.TypeKind == TypeKind.Enum) {
-                        return fieldSymbol.Name;
+                    // 如果符号是常量，则尝试获取其值    
+                    if (symbol is IFieldSymbol fieldSymbol) {
+                        if (fieldSymbol.ContainingType.TypeKind == TypeKind.Enum) {
+                            return fieldSymbol.Name;
+                        }
+
+                        if (fieldSymbol.HasConstantValue) {
+                            return fieldSymbol.ConstantValue.ToString();
+                        }
                     }
-
-                    if (fieldSymbol.HasConstantValue) {
-                        return fieldSymbol.ConstantValue;
+                    break;
+                }
+                case LiteralExpressionSyntax literal:
+                    switch (literal.Kind()) {
+                        case SyntaxKind.TrueLiteralExpression:
+                            return "true";
+                        case SyntaxKind.FalseLiteralExpression:
+                            return "false";
+                        case SyntaxKind.NumericLiteralExpression:
+                        case SyntaxKind.StringLiteralExpression:
+                            return literal.Token.Value?.ToString();
                     }
-                }
+                    break;
+                case IdentifierNameSyntax identifierName: {
+                    // 获取nameof表达式指向的符号  
+                    var symbolInfo = semanticModel.GetSymbolInfo(identifierName);
 
-                // 对于其他类型的成员（如属性或方法），你可能需要额外的逻辑  
-            }
-            else if (expression is LiteralExpressionSyntax literal) // 处理字面量表达式  
-            {
-                switch (literal.Kind()) {
-                    case SyntaxKind.TrueLiteralExpression:
-                        return true;
-                    case SyntaxKind.FalseLiteralExpression:
-                        return false;
-                    case SyntaxKind.NumericLiteralExpression:
-                    case SyntaxKind.StringLiteralExpression:
-                        return literal.Token.Value; // 对于数字和字符串，直接返回Token.Value  
-                    // ... 可以添加其他类型的字面量处理  
+                    // 确保获取到的是有效的本地变量、参数或成员  
+                    if (symbolInfo.Symbol is not null 
+                        && symbolInfo.Symbol.Kind == SymbolKind.Local
+                        || symbolInfo.Symbol!.Kind == SymbolKind.Parameter 
+                        || symbolInfo.Symbol.Kind == SymbolKind.Property 
+                        || symbolInfo.Symbol.Kind == SymbolKind.Field
+                        || symbolInfo.Symbol.Kind == SymbolKind.Method) {
+                        // nameof表达式的结果就是符号的名称  
+                        return symbolInfo.Symbol.Name;
+                    }
+                    break;
                 }
             }
 
-            // 对于其他类型的表达式，返回null  
             return null;
         }
 
@@ -552,7 +593,8 @@ namespace Til.Lombok {
         /// <summary>
         /// Raised when a type is not partial although it should be.
         /// </summary>
-        public static readonly DiagnosticDescriptor TypeMustBePartial = new(
+        public static readonly DiagnosticDescriptor TypeMustBePartial = new
+        (
             "LOM001",
             "Type must be partial",
             "The type '{0}' must be partial in order to generate code for it",
@@ -564,7 +606,8 @@ namespace Til.Lombok {
         /// <summary>
         /// Raised when a type is within another type although it should not be.
         /// </summary>
-        public static readonly DiagnosticDescriptor TypeMustBeNonNested = new(
+        public static readonly DiagnosticDescriptor TypeMustBeNonNested = new
+        (
             "LOM002",
             "Type must be non-nested",
             "The type '{0}' must be non-nested in order to generate code for it",
@@ -576,7 +619,8 @@ namespace Til.Lombok {
         /// <summary>
         /// Raised when a type is not within a namespace although it should be.
         /// </summary>
-        public static readonly DiagnosticDescriptor TypeMustHaveNamespace = new(
+        public static readonly DiagnosticDescriptor TypeMustHaveNamespace = new
+        (
             "LOM003",
             "Type must have namespace",
             "The type '{0}' must be in a namespace in order to generate code for it",
@@ -588,7 +632,8 @@ namespace Til.Lombok {
         /// <summary>
         /// Raised when a method is not within a class or a struct although it should be, or if it is a local function.
         /// </summary>
-        public static readonly DiagnosticDescriptor MethodMustBeInPartialClassOrStruct = new(
+        public static readonly DiagnosticDescriptor MethodMustBeInPartialClassOrStruct = new
+        (
             "LOM004",
             "Method must be inside partial class or struct",
             "The method '{0}' must be inside a partial class or a struct and cannot be a local function",
@@ -600,7 +645,8 @@ namespace Til.Lombok {
         /// <summary>
         /// Raised when a field is not within a class or a struct although it should be.
         /// </summary>
-        public static readonly DiagnosticDescriptor PropertyFieldMustBeInClassOrStruct = new(
+        public static readonly DiagnosticDescriptor PropertyFieldMustBeInClassOrStruct = new
+        (
             "LOM005",
             "Field must be inside class or struct",
             "The field '{0}' must be inside a class or a struct",
@@ -612,7 +658,8 @@ namespace Til.Lombok {
         /// <summary>
         /// Raised when invalid JSON is encountered.
         /// </summary>
-        public static readonly DiagnosticDescriptor InvalidJson = new(
+        public static readonly DiagnosticDescriptor InvalidJson = new
+        (
             "LOM006",
             "Invalid JSON",
             "Unable to generate code, since the JSON input is invalid.",
@@ -624,7 +671,8 @@ namespace Til.Lombok {
         /// <summary>
         /// Raised when a type is file-local.
         /// </summary>
-        public static readonly DiagnosticDescriptor TypeCannotBeFileLocal = new(
+        public static readonly DiagnosticDescriptor TypeCannotBeFileLocal = new
+        (
             "LOM007",
             "Type cannot be file-local",
             "The type '{0}' must not be file-local in order to generate code for it.",
@@ -666,7 +714,7 @@ namespace Til.Lombok {
         /// <typeparam name="T">The type this predicate targets.</typeparam>
         /// <returns>A new predicate with an additional OR predicate.</returns>
         public static Expression<Func<T, bool>> Or<T>(this Expression<Func<T, bool>> expr1, Expression<Func<T, bool>> expr2) {
-            var invokedExpr = Expression.Invoke(expr2, expr1.Parameters);
+            InvocationExpression invokedExpr = Expression.Invoke(expr2, expr1.Parameters);
 
             return Expression.Lambda<Func<T, bool>>(Expression.OrElse(expr1.Body, invokedExpr), expr1.Parameters);
         }
@@ -679,7 +727,7 @@ namespace Til.Lombok {
         /// <typeparam name="T">The type this predicate targets.</typeparam>
         /// <returns>A new predicate with an additional AND predicate.</returns>
         public static Expression<Func<T, bool>> And<T>(this Expression<Func<T, bool>> expr1, Expression<Func<T, bool>> expr2) {
-            var invokedExpr = Expression.Invoke(expr2, expr1.Parameters);
+            InvocationExpression invokedExpr = Expression.Invoke(expr2, expr1.Parameters);
 
             return Expression.Lambda<Func<T, bool>>(Expression.AndAlso(expr1.Body, invokedExpr), expr1.Parameters);
         }
@@ -843,34 +891,14 @@ namespace Til.Lombok {
 
     public static class Util {
 
-        public static void noNull(object? obj, string? message = null) {
-            if (obj is null) {
-                throw new NullReferenceException(message);
-            }
-        }
-
-        public static IDictionary<string, object> pack<T>(this T t) where T : class {
-            IDictionary<string, object> dictionary = new Dictionary<string, object>();
-
-            foreach (FieldInfo fieldInfo in t.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-                if (fieldInfo.GetCustomAttribute<PackFieldAttribute>() is null) {
-                    continue;
-                }
-                dictionary.Add(fieldInfo.Name, fieldInfo.GetValue(t)!);
-            }
-
-            foreach (PropertyInfo propertyInfo in t.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)) {
-                if (propertyInfo.GetCustomAttribute<PackFieldAttribute>() is null) {
-                    continue;
-                }
-                dictionary.Add(propertyInfo.Name, propertyInfo.GetValue(t)!);
-            }
-            return dictionary;
-        }
-
-        public static void format(this string format, StringBuilder? stringBuilder, Action<string> structure /*IDictionary<string, object> args*/) {
+        public static void format(this string format, StringBuilder? stringBuilder, Action<string> structure) {
             if ((format == null) || (structure == null)) {
-                throw new ArgumentNullException((format == null) ? "format" : "args");
+                throw new ArgumentNullException
+                (
+                    (format == null)
+                        ? "format"
+                        : "args"
+                );
             }
 
             bool startBrace = false;
@@ -929,8 +957,419 @@ namespace Til.Lombok {
             throw new FormatException("Input string was not in a correct format.");
         }
 
-        public static string GetThisFilePath([CallerFilePath] string path = null!) {
-            return path;
+        public static O noNullOrDef<O>(this O? o, O def) => o ?? def;
+
+    }
+
+    public static class GeneratorUtil {
+
+        public static MethodDeclarationSyntax applyAll<A>
+        (
+            this MethodDeclarationSyntax methodDeclarationSyntax,
+            FieldsAttributeContext<A> fieldsAttributeContext
+        ) where A : MetadataAttribute {
+            return methodDeclarationSyntax
+                .applyCustomName(fieldsAttributeContext.attributeContext.firstAttribute, fieldsAttributeContext.typeContext.fieldName)
+                .applyLink(fieldsAttributeContext.attributeContext.firstAttribute, fieldsAttributeContext.typeContext.className)
+                .applyNoNull(fieldsAttributeContext.attributeContext.firstAttribute)
+                .applyFrozen(fieldsAttributeContext.attributeContext.firstAttribute)
+                .applyDeclarationSyntaxes(fieldsAttributeContext.attributeContext.firstAttribute);
+
+        }
+
+        public static MethodDeclarationSyntax applyFrozen(this MethodDeclarationSyntax methodDeclarationSyntax, MetadataAttribute metadataAttribute) {
+            if (metadataAttribute.freezeTag is null) {
+                return methodDeclarationSyntax;
+            }
+            if (methodDeclarationSyntax.Body is null) {
+                return methodDeclarationSyntax;
+            }
+
+            return methodDeclarationSyntax.WithBody
+            (
+                Block
+                (
+                    methodDeclarationSyntax.Body.Statements.Insert
+                    (
+                        0,
+                        ExpressionStatement
+                        (
+                            InvocationExpression
+                            (
+                                MemberAccessExpression
+                                (
+                                    SyntaxKind.SimpleMemberAccessExpression, // 使用点号访问  ,
+                                    ThisExpression(),
+                                    IdentifierName
+                                    (
+                                        "validateNonFrozen"
+                                    )
+                                ),
+                                ArgumentList
+                                (
+                                    SingletonSeparatedList
+                                    (
+                                        Argument
+                                        (
+                                            LiteralExpression
+                                            (
+                                                SyntaxKind.StringLiteralExpression,
+                                                Literal
+                                                (
+                                                    metadataAttribute.freezeTag
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        }
+
+        public static MethodDeclarationSyntax applyNoNull(this MethodDeclarationSyntax methodDeclarationSyntax, MetadataAttribute metadataAttribute) {
+
+            if (!metadataAttribute.noNull) {
+                return methodDeclarationSyntax;
+            }
+
+            if (methodDeclarationSyntax.Body is null) {
+                return methodDeclarationSyntax;
+            }
+
+            return methodDeclarationSyntax.WithBody
+            (
+                Block
+                (
+                    methodDeclarationSyntax.Body.Statements.InsertRange
+                    (
+                        0,
+                        methodDeclarationSyntax.ParameterList.Parameters.Select
+                        (
+                            parameterListParameter => IfStatement
+                            (
+                                BinaryExpression
+                                (
+                                    SyntaxKind.EqualsExpression,
+                                    IdentifierName(parameterListParameter.Identifier.Text),
+                                    LiteralExpression(SyntaxKind.NullLiteralExpression)
+                                ),
+                                Block
+                                (
+                                    ThrowStatement
+                                    (
+                                        ObjectCreationExpression
+                                        (
+                                            ParseTypeName("System.NullReferenceException"),
+                                            ArgumentList
+                                            (
+                                                SeparatedList
+                                                (
+                                                    new[] {
+                                                        Argument
+                                                        (
+                                                            LiteralExpression
+                                                            (
+                                                                SyntaxKind.StringLiteralExpression,
+                                                                Literal
+                                                                (
+                                                                    $"{methodDeclarationSyntax.Identifier.Text}.{parameterListParameter.Identifier.Text} is null"
+                                                                )
+                                                            )
+                                                        )
+                                                    }
+                                                )
+                                            ),
+                                            null
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+
+        }
+
+        public static MethodDeclarationSyntax applyCustomName(this MethodDeclarationSyntax methodDeclarationSyntax, MetadataAttribute metadataAttribute, string fieldName) {
+
+            if (metadataAttribute.customName is not null) {
+                return methodDeclarationSyntax.WithIdentifier
+                (
+                    Identifier(metadataAttribute.customName)
+                );
+            }
+
+            if (metadataAttribute.customPrefix is not null) {
+                methodDeclarationSyntax = methodDeclarationSyntax.WithIdentifier
+                (
+                    Identifier($"{metadataAttribute.customPrefix}{fieldName.ToPascalCaseIdentifier()}")
+                );
+            }
+
+            if (metadataAttribute.customSuffix is not null) {
+                methodDeclarationSyntax = methodDeclarationSyntax.WithIdentifier
+                (
+                    Identifier
+                    (
+                        methodDeclarationSyntax.Identifier.Text + metadataAttribute.customSuffix
+                    )
+                );
+            }
+
+            return methodDeclarationSyntax;
+
+        }
+
+        public static MethodDeclarationSyntax applyDeclarationSyntaxes(this MethodDeclarationSyntax methodDeclarationSyntax, MetadataAttribute metadataAttribute) {
+            switch (metadataAttribute.accessLevel) {
+                case AccessLevel.Private:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers
+                    (
+                        Token
+                        (
+                            SyntaxKind.PrivateKeyword
+                        )
+                    );
+                    break;
+                case AccessLevel.Protected:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers
+                    (
+                        Token
+                        (
+                            SyntaxKind.ProtectedKeyword
+                        )
+                    );
+                    break;
+                case AccessLevel.ProtectedInternal:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers
+                    (
+                        Token
+                        (
+                            SyntaxKind.ProtectedKeyword
+                        ),
+                        Token
+                        (
+                            SyntaxKind.InternalKeyword
+                        )
+                    );
+                    break;
+                case AccessLevel.Internal:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers
+                    (
+                        Token
+                        (
+                            SyntaxKind.InternalKeyword
+                        )
+                    );
+                    break;
+                case AccessLevel.Public:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers
+                    (
+                        Token
+                        (
+                            SyntaxKind.PublicKeyword
+                        )
+                    );
+                    break;
+            }
+
+            switch (metadataAttribute.methodType) {
+                case MethodType.def:
+                    break;
+                case MethodType.Abstract:
+                    methodDeclarationSyntax = methodDeclarationSyntax.WithBody(null)
+                        .AddModifiers
+                        (
+                            Token
+                            (
+                                SyntaxKind.AbstractKeyword
+                            )
+                        )
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+                    break;
+                case MethodType.Partial:
+                    methodDeclarationSyntax = methodDeclarationSyntax.WithBody(null)
+                        .AddModifiers
+                        (
+                            Token
+                            (
+                                SyntaxKind.PartialKeyword
+                            )
+                        )
+                        .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+                    break;
+                case MethodType.Override:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers
+                    (
+                        Token
+                        (
+                            SyntaxKind.OverrideKeyword
+                        )
+                    );
+                    break;
+                case MethodType.Virtual:
+                    methodDeclarationSyntax = methodDeclarationSyntax.AddModifiers
+                    (
+                        Token
+                        (
+                            SyntaxKind.VirtualKeyword
+                        )
+                    );
+                    break;
+            }
+            return methodDeclarationSyntax;
+        }
+
+        public static MethodDeclarationSyntax applyLink
+        (
+            this MethodDeclarationSyntax methodDeclarationSyntax,
+            MetadataAttribute metadataAttribute,
+            string className
+        ) {
+            if (!metadataAttribute.link) {
+                return methodDeclarationSyntax;
+            }
+
+            TypeSyntax returnType = methodDeclarationSyntax.ReturnType;
+            if (!returnType.ToString().Equals("void")) {
+                return methodDeclarationSyntax;
+            }
+
+            methodDeclarationSyntax = methodDeclarationSyntax
+                .WithReturnType
+                (
+                    IdentifierName(className)
+                );
+
+            if (methodDeclarationSyntax.Body is null) {
+                return methodDeclarationSyntax;
+            }
+
+            return methodDeclarationSyntax
+                .AddBodyStatements
+                (
+                    ReturnStatement
+                    (
+                        ThisExpression()
+                    )
+                );
+        }
+
+        public static MethodDeclarationSyntax applyUpdateField(this MethodDeclarationSyntax methodDeclarationSyntax, MetadataAttribute metadataAttribute, string fieldName) {
+
+            if (!metadataAttribute.updateField) {
+                return methodDeclarationSyntax;
+            }
+
+            if (methodDeclarationSyntax.Body is null) {
+                return methodDeclarationSyntax;
+            }
+
+            return methodDeclarationSyntax
+                .WithBody
+                (
+                    Block
+                    (
+                        methodDeclarationSyntax.Body.Statements.Insert
+                        (
+                            0,
+                            IfStatement
+                            (
+                                InvocationExpression
+                                (
+                                    MemberAccessExpression
+                                    (
+                                        SyntaxKind.SimpleMemberAccessExpression,
+                                        IdentifierName
+                                        (
+                                            "object"
+                                        ),
+                                        IdentifierName
+                                        (
+                                            nameof(Equals)
+                                        )
+                                    ),
+                                    ArgumentList
+                                    (
+                                        SeparatedList
+                                        (
+                                            new[] {
+                                                Argument
+                                                (
+                                                    MemberAccessExpression
+                                                    (
+                                                        SyntaxKind.SimpleMemberAccessExpression,
+                                                        ThisExpression(),
+                                                        IdentifierName
+                                                        (
+                                                            fieldName
+                                                        )
+                                                    )
+                                                ),
+                                                Argument
+                                                (
+                                                    IdentifierName
+                                                    (
+                                                        fieldName
+                                                    )
+                                                ),
+                                            }
+                                        )
+                                    )
+                                ),
+                                Block
+                                (
+                                    ExpressionStatement
+                                    (
+                                        InvocationExpression
+                                        (
+                                            MemberAccessExpression
+                                            (
+                                                SyntaxKind.SimpleMemberAccessExpression, // 使用点号访问  ,
+                                                ThisExpression(),
+                                                IdentifierName
+                                                (
+                                                    "update" + fieldName.ToPascalCaseIdentifier()
+                                                )
+                                            ),
+                                            ArgumentList
+                                            (
+                                                SeparatedList
+                                                (
+                                                    new[] {
+                                                        Argument
+                                                        (
+                                                            MemberAccessExpression
+                                                            (
+                                                                SyntaxKind.SimpleMemberAccessExpression,
+                                                                ThisExpression(),
+                                                                IdentifierName
+                                                                (
+                                                                    fieldName
+                                                                )
+                                                            )
+                                                        ),
+                                                        Argument
+                                                        (
+                                                            IdentifierName
+                                                            (
+                                                                fieldName
+                                                            )
+                                                        ),
+                                                    }
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                );
         }
 
     }

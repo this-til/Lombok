@@ -3,28 +3,6 @@
 namespace Til.Lombok {
 
     /// <summary>
-    /// The kind of members which Lombok.NET supports.
-    /// </summary>
-    public enum MemberType {
-
-        /// <summary>
-        /// Default value.
-        /// </summary>
-        None = 0,
-
-        /// <summary>
-        /// A C# field.
-        /// </summary>
-        Field,
-
-        /// <summary>
-        /// A C# property.
-        /// </summary>
-        Property
-
-    }
-
-    /// <summary>
     /// The kinds of accesses Lombok.NET supports.
     /// </summary>
     [Flags]
@@ -52,8 +30,11 @@ namespace Til.Lombok {
 
     }
 
-    public enum AccessLevel {
+    public enum AccessLevel  {
 
+        
+        Public = 0,
+        
         Private,
 
         Protected,
@@ -62,13 +43,11 @@ namespace Til.Lombok {
 
         Internal,
 
-        Public
-
     }
 
     public enum MethodType {
 
-        def,
+        def = 0,
 
         Abstract,
         Partial,
@@ -77,8 +56,15 @@ namespace Til.Lombok {
         Virtual,
     }
 
-    public class A {
+    public enum PartialPos {
+
+        Interior,
+        UpLevel,
+        Compilation,
+        Namespace
 
     }
+
+
 
 }

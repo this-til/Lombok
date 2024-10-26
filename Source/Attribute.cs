@@ -1,15 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Til.Lombok {
 
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface)]
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
     public class ILombokAttribute : Attribute {
 
     }
 
     [AttributeUsage(AttributeTargets.Class)]
     public class IFreezeAttribute : Attribute {
+
+        public IFreezeAttribute() {
+        }
+
+        public IFreezeAttribute(Dictionary<string, string> data) {
+        }
 
     }
 
@@ -28,7 +35,29 @@ namespace Til.Lombok {
         /// <summary>
         /// 在 get set 方法中，如果不为空将进行冻结验证，验证不通过将抛出异常
         /// </summary>
-        public string freezeTag;
+        public string? freezeTag;
+
+        /// <summary>
+        /// 自定义前缀
+        /// 默认 get、set 等，根据注解类型设定
+        /// </summary>
+        public string? customPrefix;
+
+        /// <summary>
+        /// 自定义后缀
+        /// 默认为空
+        /// </summary>
+        public string? customSuffix;
+
+        /// <summary>
+        /// 自定义名称
+        /// </summary>
+        public string? customName;
+
+        /// <summary>
+        /// 自定义类型
+        /// </summary>
+        public string? customType;
 
         /// <summary>
         /// 调用更新方法
@@ -38,232 +67,326 @@ namespace Til.Lombok {
         /// <summary>
         /// 可见性
         /// </summary>
-        public AccessLevel accessLevel;
+        public AccessLevel accessLevel = AccessLevel.Public;
 
         /// <summary>
         /// 方法类型
         /// </summary>
-        public MethodType methodType;
+        public MethodType methodType = MethodType.def;
 
         public MetadataAttribute() {
         }
 
-        public MetadataAttribute(MetadataAttribute metadataAttribute) {
-            link = metadataAttribute.link;
-            noNull = metadataAttribute.noNull;
-            freezeTag = metadataAttribute.freezeTag;
-            updateField = metadataAttribute.updateField;
-            accessLevel = metadataAttribute.accessLevel;
-        }
-
-        public static MetadataAttribute of(Dictionary<string, object?> data) {
-            var attribute = new MetadataAttribute();
-            data.TryGetValue("link", out var link);
-            attribute.link = link is not null && (bool)link;
-            data.TryGetValue("noNull", out var noNull);
-            attribute.noNull = noNull is not null && (bool)noNull;
-            data.TryGetValue("freezeTag", out var freezeTag);
-            attribute.freezeTag = freezeTag?.ToString() ?? string.Empty;
-            data.TryGetValue("updateField", out var updateField);
-            attribute.updateField = updateField is not null && (bool)updateField;
-            data.TryGetValue("accessLevel", out var accessTypes);
-            attribute.accessLevel = accessTypes is null ? AccessLevel.Public : (AccessLevel)Enum.Parse(typeof(AccessLevel), accessTypes.ToString());
-            data.TryGetValue("methodType", out var methodType);
-            attribute.methodType = methodType is null ? MethodType.def : (MethodType)Enum.Parse(typeof(MethodType), methodType.ToString());
-            return attribute;
+        public MetadataAttribute(Dictionary<string, string> data) {
+            // ReSharper disable once InlineOutVariableDeclaration
+            string value;
+            if (data.TryGetValue(nameof(this.link), out value)) {
+                this.link = bool.TryParse(value, out _);
+            }
+            if (data.TryGetValue(nameof(this.noNull), out value)) {
+                this.noNull = bool.TryParse(value, out _);
+            }
+            if (data.TryGetValue(nameof(this.freezeTag), out value)) {
+                this.freezeTag = value;
+            }
+            if (data.TryGetValue(nameof(this.customPrefix), out value)) {
+                this.customPrefix = value;
+            }
+            if (data.TryGetValue(nameof(this.customSuffix), out value)) {
+                this.customSuffix = value;
+            }
+            if (data.TryGetValue(nameof(this.customName), out value)) {
+                this.customName = value;
+            }
+            if (data.TryGetValue(nameof(this.customType), out value)) {
+                this.customType = value;
+            }
+            if (data.TryGetValue(nameof(this.updateField), out value)) {
+                this.updateField = bool.TryParse(value, out _);
+            }
+            if (data.TryGetValue(nameof(this.accessLevel), out value)) {
+                Enum.TryParse(value, out accessLevel);
+            }
+            if (data.TryGetValue(nameof(this.methodType), out value)) {
+                Enum.TryParse(value, out methodType);
+            }
         }
 
     }
 
-    public class ListMetadataAttribute : MetadataAttribute {
+    public class ContainerMetadataAttribute : MetadataAttribute {
+
+        /// <summary>
+        /// 直接的
+        /// </summary>
+        public bool direct;
+
+        /// <summary>
+        /// 在for中指定是否使用yield
+        /// </summary>
+        public bool useYield;
 
         /// <summary>
         /// 在list方法中指定泛型类型
         /// </summary>
-        public string type;
-
-        /// <summary>
-        /// 直接的
-        /// </summary>
-        public bool direct;
-
-        /// <summary>
-        /// 在for中指定是否使用yield
-        /// </summary>
-        public bool useYield;
-
-        public ListMetadataAttribute() {
-        }
-
-        public ListMetadataAttribute(MetadataAttribute metadataAttribute) : base(metadataAttribute) {
-        }
-
-        public new static ListMetadataAttribute of(Dictionary<string, object?> data) {
-            var attribute = new ListMetadataAttribute(MetadataAttribute.of(data));
-            data.TryGetValue("useYield", out var useYield);
-            attribute.useYield = useYield is not null && (bool)useYield;
-            data.TryGetValue("direct", out var direct);
-            attribute.direct = direct is not null && (bool)direct;
-            data.TryGetValue("type", out var type);
-            attribute.type = type?.ToString() ?? string.Empty;
-            return attribute;
-        }
-
-    }
-
-    public class MapMetadataAttribute : MetadataAttribute {
+        public string? listCellType;
 
         /// <summary>
         /// 在map方法中指定泛型Key类型
         /// </summary>
-        public string keyType;
+        public string? keyType;
 
         /// <summary>
         /// 在map方法中指定泛型Value类型
         /// </summary>
-        public string valueType;
+        public string? valueType;
 
-        /// <summary>
-        /// 直接的
-        /// </summary>
-        public bool direct;
+        public ContainerMetadataAttribute() {
+        }
 
-        /// <summary>
-        /// 在for中指定是否使用yield
-        /// </summary>
-        public bool useYield;
+        public ContainerMetadataAttribute(Dictionary<string, string> data) : base(data) {
+            // ReSharper disable once InlineOutVariableDeclaration
+            string value;
+            if (data.TryGetValue(nameof(this.direct), out value)) {
+                this.direct = bool.TryParse(value, out _);
+            }
+            if (data.TryGetValue(nameof(this.useYield), out value)) {
+                this.useYield = bool.TryParse(value, out _);
+            }
+            if (data.TryGetValue(nameof(this.listCellType), out value)) {
+                this.listCellType = value;
+            }
+            if (data.TryGetValue(nameof(this.keyType), out value)) {
+                this.keyType = value;
+            }
+            if (data.TryGetValue(nameof(this.valueType), out value)) {
+                this.valueType = value;
+            }
+        }
+
+    }
+
+    public class ListMetadataAttribute : ContainerMetadataAttribute {
+
+        public ListMetadataAttribute() {
+        }
+
+        public ListMetadataAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    public class MapMetadataAttribute : ContainerMetadataAttribute {
 
         public MapMetadataAttribute() {
         }
 
-        public MapMetadataAttribute(MetadataAttribute metadataAttribute) : base(metadataAttribute) {
-        }
-
-        public new static MapMetadataAttribute of(Dictionary<string, object?> data) {
-            var attribute = new MapMetadataAttribute(MetadataAttribute.of(data));
-            data.TryGetValue("useYield", out var useYield);
-            attribute.useYield = useYield is not null && (bool)useYield;
-            data.TryGetValue("direct", out var direct);
-            attribute.direct = direct is not null && (bool)direct;
-            data.TryGetValue("keyType", out var keyType);
-            attribute.keyType = keyType?.ToString() ?? string.Empty;
-            data.TryGetValue("valueType", out var valueType);
-            attribute.valueType = valueType?.ToString() ?? string.Empty;
-            return attribute;
+        public MapMetadataAttribute(Dictionary<string, string> data) : base(data) {
         }
 
     }
 
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
     public class GetAttribute : MetadataAttribute {
 
-    }
+        public GetAttribute() {
+        }
 
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class IsAttribute : MetadataAttribute {
-
-    }
-
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class OpenAttribute : MetadataAttribute {
+        public GetAttribute(Dictionary<string, string> data) : base(data) {
+        }
 
     }
 
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
     public class SetAttribute : MetadataAttribute {
 
-    }
+        public SetAttribute() {
+        }
 
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class AddAttribute : ListMetadataAttribute {
-
-    }
-
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class RemoveAttribute : ListMetadataAttribute {
+        public SetAttribute(Dictionary<string, string> data) : base(data) {
+        }
 
     }
 
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class IndexAttribute : ListMetadataAttribute {
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class OpenAttribute : MetadataAttribute {
 
-    }
+        public OpenAttribute() {
+        }
 
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class ContainAttribute : ListMetadataAttribute {
-
-    }
-
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class ForAttribute : ListMetadataAttribute {
+        public OpenAttribute(Dictionary<string, string> data) : base(data) {
+        }
 
     }
 
     //------------------------------------------------------------------------------------
 
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class PutAttribute : MapMetadataAttribute {
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class CountAttribute : ListMetadataAttribute {
 
-    }
+        public CountAttribute() {
+        }
 
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class MapGetAttribute : MapMetadataAttribute {
-
-    }
-
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class RemoveKeyAttribute : MapMetadataAttribute {
-
-    }
-
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class RemoveValueAttribute : MapMetadataAttribute {
-
-    }
-
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class ContainKeyAttribute : MapMetadataAttribute {
-
-    }
-
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class ContainValueAttribute : MapMetadataAttribute {
-
-    }
-
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class ForKeyAttribute : MapMetadataAttribute {
-
-    }
-
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class ForValueAttribute : MapMetadataAttribute {
-
-    }
-
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class ForAllAttribute : MapMetadataAttribute {
-
-    }
-
-    [AttributeUsage(AttributeTargets.Class)]
-    public class ISelfAttribute : Attribute {
-
-        public string? instantiation;
-
-        public static ISelfAttribute of(Dictionary<string, object?> data) {
-            var attribute = new ISelfAttribute();
-
-            data.TryGetValue("instantiation", out var instantiation);
-            attribute.instantiation = instantiation!.ToString();
-
-            return attribute;
+        public CountAttribute(Dictionary<string, string> data) : base(data) {
         }
 
     }
 
-    [AttributeUsage(AttributeTargets.Class)]
-    public class IPackAttribute : Attribute {
+    //------------------------------------------------------------------------------------
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class AddAttribute : ListMetadataAttribute {
+
+        public AddAttribute() {
+        }
+
+        public AddAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class RemoveAttribute : ListMetadataAttribute {
+
+        public RemoveAttribute() {
+        }
+
+        public RemoveAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class IndexAttribute : ListMetadataAttribute {
+
+        public IndexAttribute() {
+        }
+
+        public IndexAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class ContainAttribute : ListMetadataAttribute {
+
+        public ContainAttribute() {
+        }
+
+        public ContainAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class ForAttribute : ListMetadataAttribute {
+
+        public ForAttribute() {
+        }
+
+        public ForAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    //------------------------------------------------------------------------------------
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class PutAttribute : MapMetadataAttribute {
+
+        public PutAttribute() {
+        }
+
+        public PutAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class MapGetAttribute : MapMetadataAttribute {
+
+        public MapGetAttribute() {
+        }
+
+        public MapGetAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class RemoveKeyAttribute : MapMetadataAttribute {
+
+        public RemoveKeyAttribute() {
+        }
+
+        public RemoveKeyAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class RemoveValueAttribute : MapMetadataAttribute {
+
+        public RemoveValueAttribute() {
+        }
+
+        public RemoveValueAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class ContainKeyAttribute : MapMetadataAttribute {
+
+        public ContainKeyAttribute() {
+        }
+
+        public ContainKeyAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class ContainValueAttribute : MapMetadataAttribute {
+
+        public ContainValueAttribute() {
+        }
+
+        public ContainValueAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class ForKeyAttribute : MapMetadataAttribute {
+
+        public ForKeyAttribute() {
+        }
+
+        public ForKeyAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class ForValueAttribute : MapMetadataAttribute {
+
+        public ForValueAttribute() {
+        }
+
+        public ForValueAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class ForAllAttribute : MapMetadataAttribute {
+
+        public ForAllAttribute() {
+        }
+
+        public ForAllAttribute(Dictionary<string, string> data) : base(data) {
+        }
 
     }
 
@@ -272,50 +395,122 @@ namespace Til.Lombok {
 
         public string? model;
 
-        public static IPartialAttribute of(Dictionary<string, object?> data) {
-            var attribute = new IPartialAttribute();
+        public string? customFill;
 
-            data.TryGetValue("model", out var model);
-            attribute.model = model!.ToString();
+        public Dictionary<string, string>? _customFill;
 
-            return attribute;
+        public PartialPos partialPos;
+
+        public IPartialAttribute() {
         }
 
-    }
+        public IPartialAttribute(Dictionary<string, string> data) {
+            string value;
+            if (data.TryGetValue(nameof(this.model), out value)) {
+                this.model = value;
+            }
+            if (data.TryGetValue(nameof(this.partialPos), out value)) {
+                Enum.TryParse(value, out partialPos);
+            }
+            if (data.TryGetValue(nameof(this.customFill), out value)) {
+                this.customFill = value;
+                _customFill = new Dictionary<string, string>();
+                StringReader stringReader = new StringReader(customFill);
+                while (stringReader.ReadLine() is { } line) {
+                    string[] kv = line.Split(':');
+                    if (kv.Length != 2) {
+                        continue;
+                    }
+                    string k = kv[0].Trim();
+                    string v = kv[1].Trim();
 
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-    public class MultipleExtendsAttribute : Attribute {
-
-        public string? className;
-
-        public static MultipleExtendsAttribute of(Dictionary<string, object?> data) {
-            var attribute = new MultipleExtendsAttribute();
-
-            data.TryGetValue("className", out var model);
-            attribute.className = model!.ToString();
-
-            return attribute;
+                    _customFill[k] = v;
+                }
+            }
         }
-
-    }
-
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class PackFieldAttribute : Attribute {
 
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class ToStringFieldAttribute : Attribute {
 
+        public ToStringFieldAttribute() {
+        }
+
+        public ToStringFieldAttribute(Dictionary<string, string> data) {
+        }
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class HashCodeFieldAttribute : Attribute {
 
+        public HashCodeFieldAttribute() {
+        }
+
+        public HashCodeFieldAttribute(Dictionary<string, string> data) {
+        }
+
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class EqualsFieldAttribute : Attribute {
+
+        public EqualsFieldAttribute() {
+        }
+
+        public EqualsFieldAttribute(Dictionary<string, string> data) {
+        }
+
+    }
+
+    public abstract class StringClassAttribute : Attribute {
+
+        public bool hasBase;
+
+        public StringClassAttribute() {
+        }
+
+        public StringClassAttribute(Dictionary<string, string> data) {
+            string value;
+            if (data.TryGetValue(nameof(this.hasBase), out value)) {
+                this.hasBase = bool.TryParse(value, out _);
+            }
+        }
+        
+        
+    }
+
+    [AttributeUsage(AttributeTargets.Class)]
+    public class ToStringClassAttribute : StringClassAttribute {
+
+        public ToStringClassAttribute() {
+        }
+
+        public ToStringClassAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Class)]
+    public class HashCodeClassAttribute : StringClassAttribute {
+
+        public HashCodeClassAttribute() {
+        }
+
+        public HashCodeClassAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Class)]
+    public class EqualsClassAttribute : StringClassAttribute {
+
+        public EqualsClassAttribute() {
+        }
+
+        public EqualsClassAttribute(Dictionary<string, string> data) : base(data) {
+        }
 
     }
 

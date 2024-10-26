@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -567,16 +568,44 @@ namespace Til.Lombok.Generator {
                     var symbolInfo = semanticModel.GetSymbolInfo(identifierName);
 
                     // 确保获取到的是有效的本地变量、参数或成员  
-                    if (symbolInfo.Symbol is not null 
+                    if (symbolInfo.Symbol is not null
                         && symbolInfo.Symbol.Kind == SymbolKind.Local
-                        || symbolInfo.Symbol!.Kind == SymbolKind.Parameter 
-                        || symbolInfo.Symbol.Kind == SymbolKind.Property 
+                        || symbolInfo.Symbol!.Kind == SymbolKind.Parameter
+                        || symbolInfo.Symbol.Kind == SymbolKind.Property
                         || symbolInfo.Symbol.Kind == SymbolKind.Field
                         || symbolInfo.Symbol.Kind == SymbolKind.Method) {
                         // nameof表达式的结果就是符号的名称  
                         return symbolInfo.Symbol.Name;
                     }
                     break;
+                }
+                case InvocationExpressionSyntax invocationExpressionSyntax: {
+
+                    ExpressionSyntax expressionSyntax = invocationExpressionSyntax.Expression;
+
+                    if (expressionSyntax is not IdentifierNameSyntax identifierNameSyntax) {
+                        break;
+                    }
+                    if (!identifierNameSyntax.Identifier.Text.Equals("nameof")) {
+                        break;
+                    }
+
+                    ArgumentListSyntax argumentListSyntax = invocationExpressionSyntax.ArgumentList;
+
+                    SeparatedSyntaxList<ArgumentSyntax> separatedSyntaxList = argumentListSyntax.Arguments;
+                    if (separatedSyntaxList.Count == 0) {
+                        break;
+                    }
+
+                    ArgumentSyntax separatedSyntax = separatedSyntaxList[0];
+
+                    string s = separatedSyntax.ToString();
+                    int lastIndexOf = s.LastIndexOf('.');
+                    if (lastIndexOf == -1) {
+                        return s;
+                    }
+                    return s.Substring(lastIndexOf + 1);
+
                 }
             }
 
@@ -958,6 +987,42 @@ namespace Til.Lombok.Generator {
         }
 
         public static O noNullOrDef<O>(this O? o, O def) => o ?? def;
+
+        public static void PrintExceptionSummaryAndStackTrace(this Exception ex) {
+            // 获取堆栈跟踪的第一帧  
+            StackTrace stackTrace = new StackTrace(ex, true);
+            StackFrame firstFrame = stackTrace.GetFrame(0);
+
+            // 格式化文件名、行号和列号为紧凑字符串  
+            string fileLocation = firstFrame.GetFileName() != null
+                ? $"{firstFrame.GetFileName()}[{firstFrame.GetFileLineNumber()}, {firstFrame.GetFileColumnNumber()}]"
+                : "Unknown file[0, 0]";
+
+            // 格式化一行简化的异常信息  
+            string summary = $"Exception Message: {ex.Message}, Type: {ex.GetType()}, Method: {firstFrame.GetMethod().DeclaringType?.FullName}.{firstFrame.GetMethod().Name}, Location: {fileLocation}";
+
+            // 打印简化的异常信息  
+            Console.WriteLine(summary);
+
+            // 打印完整的堆栈跟踪信息  
+            foreach (StackFrame frame in stackTrace.GetFrames() ?? Array.Empty<StackFrame>()) {
+                MethodBase method = frame.GetMethod();
+                string fileName = frame.GetFileName() ?? "Unknown file";
+                int fileLineNumber = frame.GetFileLineNumber();
+                int fileColumnNumber = frame.GetFileColumnNumber();
+
+                string frameLocation = $"{fileName}[{fileLineNumber}, {fileColumnNumber}]";
+                Console.WriteLine($"    Method: {method.DeclaringType?.FullName}.{method.Name}, Location: {frameLocation}");
+            }
+
+            Console.WriteLine();
+            
+            // 如果异常有内部异常，也打印出来  
+            if (ex.InnerException != null) {
+                Console.WriteLine("Inner Exception:");
+                PrintExceptionSummaryAndStackTrace(ex.InnerException);
+            }
+        }
 
     }
 

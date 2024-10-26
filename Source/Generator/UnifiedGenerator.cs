@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -101,7 +102,12 @@ namespace Til.Lombok.Generator {
         private void generatedPartialClass(BasicsContext basicsContext) {
 
             foreach (GeneratorComponent generatorComponent in generatorComponentList) {
-                generatorComponent.fill(basicsContext);
+                try {
+                    generatorComponent.fill(basicsContext);
+                }
+                catch (Exception e) {
+                    e.PrintExceptionSummaryAndStackTrace();
+                }
             }
 
             basicsContext.partialClass.value = basicsContext.partialClass.value.AddMembers

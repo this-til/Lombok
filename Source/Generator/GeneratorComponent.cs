@@ -30,6 +30,35 @@ namespace Til.Lombok.Generator {
                     // 检查成员是否是字段或属性  
                     case FieldDeclarationSyntax fieldDeclaration: {
                         foreach (VariableDeclaratorSyntax variableDeclaratorSyntax in fieldDeclaration.Declaration.Variables) {
+                            try {
+                                fill
+                                (
+                                    new FieldsContext
+                                    (
+                                        basicsContext,
+                                        new TypeContext
+                                        (
+                                            variableDeclaratorSyntax.Identifier.ToString(),
+                                            fieldDeclaration.Declaration.Type.ToString(),
+                                            basicsContext.contextTargetNode.getHasGenericName()
+                                        ),
+                                        fieldDeclaration.Declaration.Type,
+                                        fieldDeclaration.AttributeLists,
+                                        fieldDeclaration,
+                                        variableDeclaratorSyntax,
+                                        null
+                                    )
+                                );
+                            }
+                            catch (Exception e) {
+                                e.PrintExceptionSummaryAndStackTrace();
+                            }
+
+                        }
+                        break;
+                    }
+                    case PropertyDeclarationSyntax propertyDeclaration: {
+                        try {
                             fill
                             (
                                 new FieldsContext
@@ -37,39 +66,22 @@ namespace Til.Lombok.Generator {
                                     basicsContext,
                                     new TypeContext
                                     (
-                                        variableDeclaratorSyntax.Identifier.ToString(),
-                                        fieldDeclaration.Declaration.Type.ToString(),
+                                        propertyDeclaration.Identifier.ToString(),
+                                        propertyDeclaration.Type.ToString(),
                                         basicsContext.contextTargetNode.getHasGenericName()
                                     ),
-                                    fieldDeclaration.Declaration.Type,
-                                    fieldDeclaration.AttributeLists,
-                                    fieldDeclaration,
-                                    variableDeclaratorSyntax,
-                                    null
+                                    propertyDeclaration.Type,
+                                    propertyDeclaration.AttributeLists,
+                                    null,
+                                    null,
+                                    propertyDeclaration
                                 )
                             );
                         }
-                        break;
-                    }
-                    case PropertyDeclarationSyntax propertyDeclaration: {
-                        fill
-                        (
-                            new FieldsContext
-                            (
-                                basicsContext,
-                                new TypeContext
-                                (
-                                    propertyDeclaration.Identifier.ToString(),
-                                    propertyDeclaration.Type.ToString(),
-                                    basicsContext.contextTargetNode.getHasGenericName()
-                                ),
-                                propertyDeclaration.Type,
-                                propertyDeclaration.AttributeLists,
-                                null,
-                                null,
-                                propertyDeclaration
-                            )
-                        );
+                        catch (Exception e) {
+                            e.PrintExceptionSummaryAndStackTrace();
+                        }
+
                         break;
                     }
                 }
@@ -162,16 +174,21 @@ namespace Til.Lombok.Generator {
                     }
                 }
 
-                fill
-                (
-                    new FieldsAttributeContext<A>
+                try {
+                    fill
                     (
-                        fieldsContext.basicsContext,
-                        fieldsContext,
-                        fieldsContext.typeContext,
-                        attributeContext
-                    )
-                );
+                        new FieldsAttributeContext<A>
+                        (
+                            fieldsContext.basicsContext,
+                            fieldsContext,
+                            fieldsContext.typeContext,
+                            attributeContext
+                        )
+                    );
+                }
+                catch (Exception e) {
+                    e.PrintExceptionSummaryAndStackTrace();
+                }
 
             }
 
@@ -216,14 +233,19 @@ namespace Til.Lombok.Generator {
                     attributeSyntaxeList
                 );
 
-                fill
-                (
-                    new ClassAttributeContext<A>
+                try {
+                    fill
                     (
-                        basicsContext,
-                        attributeContext
-                    )
-                );
+                        new ClassAttributeContext<A>
+                        (
+                            basicsContext,
+                            attributeContext
+                        )
+                    );
+                }
+                catch (Exception e) {
+                    e.PrintExceptionSummaryAndStackTrace();
+                }
 
             }
 
@@ -1913,6 +1935,7 @@ public partial class {type} : Til.Lombok.IFreeze {{
 
     }
 
+    [GeneratorComponent]
     public sealed class ToStringGenerator : ClassFieldAttributeGeneratorComponent<ToStringFieldAttribute, ToStringClassAttribute> {
 
         public override void fill(ClassFieldAttributeContext<ToStringFieldAttribute, ToStringClassAttribute> context) {
@@ -2007,6 +2030,7 @@ public partial class {type} : Til.Lombok.IFreeze {{
 
     }
 
+    [GeneratorComponent]
     public sealed class EqualsGenerator : ClassFieldAttributeGeneratorComponent<EqualsFieldAttribute, EqualsClassAttribute> {
 
         public override void fill(ClassFieldAttributeContext<EqualsFieldAttribute, EqualsClassAttribute> context) {
@@ -2237,6 +2261,7 @@ public partial class {type} : Til.Lombok.IFreeze {{
 
     }
 
+    [GeneratorComponent]
     public sealed class HashCodeGenerator : ClassFieldAttributeGeneratorComponent<HashCodeFieldAttribute, HashCodeClassAttribute> {
 
         public override void fill(ClassFieldAttributeContext<HashCodeFieldAttribute, HashCodeClassAttribute> context) {

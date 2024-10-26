@@ -14,21 +14,33 @@ namespace Til.Lombok.Test {
         [Set]
         [Set(accessLevel = AccessLevel.Protected, customSuffix = "Internal", noNull = true)]
         [Open]
+        [ToStringField]
+        [EqualsField]
+        [HashCodeField]
         protected int id;
 
         [Get(link = true)]
-        [Set(link = true)]
+        [Set(link = true, freezeTag = nameof(Demo.dictionary))]
         [Open(link = true, noNull = true)]
+        [ToStringField]
+        [EqualsField]
+        [HashCodeField]
         protected int age;
 
         [Get]
         [Set]
         [Open]
+        [ToStringField]
+        [EqualsField]
+        [HashCodeField]
         protected double points;
 
         [Get]
         [Set]
         [Open]
+        [ToStringField]
+        [EqualsField]
+        [HashCodeField]
         protected double balance;
 
         [Get]
@@ -39,6 +51,9 @@ namespace Til.Lombok.Test {
         [Count]
         [Remove]
         [For]
+        [ToStringField]
+        [EqualsField]
+        [HashCodeField]
         protected List<int> aIntList = new List<int>();
 
         [Get]
@@ -51,6 +66,9 @@ namespace Til.Lombok.Test {
         [ForAll]
         [ForKey]
         [ForValue]
+        [ToStringField]
+        [EqualsField]
+        [HashCodeField]
         protected Dictionary<string, string> dictionary = new Dictionary<string, string>();
 
         [ILombok]
@@ -104,6 +122,9 @@ public static class {type}EEE {{
             [Set]
             [Set(accessLevel = AccessLevel.Protected, customSuffix = "Internal", noNull = true)]
             [Open]
+            [ToStringField]
+            [EqualsField]
+            [HashCodeField]
             protected int id;
 
         }

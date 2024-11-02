@@ -131,6 +131,22 @@ public static class {type}EEE {{
 
     }
 
+    [ILombok]
+    [IPartial(model = @"
+
+[Get][Set]public int bb=0;
+[Get][Set]public int cc=0;
+
+")]
+    public partial class DD {
+
+        [Get] 
+        [Set]
+        public int aa;
+
+    }
+    
+
     /*
     [ILombok] // 引入注释才能被扫描到类
     public partial class Demo1 {
@@ -401,7 +417,7 @@ public static class {type}EEE {{
 
     [IPartial(
         model = @"
-namespace {namespace}{{
+    namespace {namespace}{{
     using System;
     using Til.Lombok;
     public partial class {type} {{
@@ -411,16 +427,16 @@ namespace {namespace}{{
             return instance;
         }}
     }}
-}}"
+    }}"
     )]
     [IPartial(
         model = @"
-namespace {namespace}{{
+    namespace {namespace}{{
     using System;
     using Til.Lombok;
     public partial class {type} {{
     }}
-}}"
+    }}"
     )]
     public partial class Demo22 {
 

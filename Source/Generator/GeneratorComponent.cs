@@ -86,7 +86,6 @@ namespace Til.Lombok.Generator {
                     }
                 }
             }
-
         }
 
         protected abstract void fill(FieldsContext fieldsContext);
@@ -154,7 +153,7 @@ namespace Til.Lombok.Generator {
                                 fieldsContext.typeContext.keyType ??= firstOrDefault?.ToFullString()!;
                             }
                             if (genericNameSyntax.TypeArgumentList.Arguments.Count > 1) {
-                                TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
+                                TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments[1];
                                 fieldsContext.typeContext.valueType ??= firstOrDefault?.ToFullString()!;
                             }
                         }
@@ -1873,6 +1872,62 @@ namespace Til.Lombok.Generator {
                     break;
             }
 
+            /*
+            if (!attributeContext.firstAttribute.allOverAgainGeneration) {
+                return;
+            }
+
+            List<ClassDeclarationSyntax> classDeclarationSyntaxes = memberDeclarationSyntaxes.OfType<ClassDeclarationSyntax>().ToList();
+
+            MemberDeclarationSyntax[] declarationSyntaxes = memberDeclarationSyntaxes.Where(m => m is not ClassDeclarationSyntax).ToArray();
+
+            if (declarationSyntaxes.Length > 0 && attributeContext.firstAttribute.partialPos == PartialPos.Interior) {
+
+                classDeclarationSyntaxes.Add(fieldsAttributeContext.basicsContext.partialClass.value.CreateNewPartialClass().AddMembers(declarationSyntaxes));
+
+            }
+            
+
+            foreach (ClassDeclarationSyntax classDeclarationSyntax in classDeclarationSyntaxes) {
+
+                Ptr<ClassDeclarationSyntax> partialClass = new Ptr<ClassDeclarationSyntax>(classDeclarationSyntax.CreateNewPartialClass());
+                
+                UnifiedGenerator.generatedPartialClass
+                (
+                    new BasicsContext
+                    (
+                        classDeclarationSyntax,
+                        fieldsAttributeContext.basicsContext.semanticModel,
+                        fieldsAttributeContext.basicsContext.context,
+                        fieldsAttributeContext.basicsContext.cancellationToken,
+                        partialClass,
+                        fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax,
+                        fieldsAttributeContext.basicsContext.compilationUnitSyntax
+                    ) {
+                        nestContext = fieldsAttributeContext.basicsContext
+                    }
+                );
+                
+                switch (attributeContext.firstAttribute.partialPos) {
+                    case PartialPos.Interior:
+                    case PartialPos.UpLevel:
+                        if (fieldsAttributeContext.basicsContext.nestContext is not null) {
+                            fieldsAttributeContext.basicsContext.nestContext.partialClass.value = fieldsAttributeContext.basicsContext.nestContext.partialClass.value.AddMembers(partialClass.value);
+                            break;
+                        }
+                        fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value = fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value.AddMembers(partialClass.value);
+                        break;
+                    case PartialPos.Namespace:
+                        fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value = fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value.AddMembers(partialClass.value);
+                        break;
+                    case PartialPos.Compilation:
+                        fieldsAttributeContext.basicsContext.compilationUnitSyntax.value = fieldsAttributeContext.basicsContext.compilationUnitSyntax.value.AddMembers(partialClass.value);
+                        break;
+                }
+                
+            }
+            */
+
         }
 
     }
@@ -1978,17 +2033,18 @@ public partial class {type} : Til.Lombok.IFreeze {{
                     .Append
                     (
                         "base={base.ToString()}"
-                    )
-                    .Append
-                    (
-                        ')'
                     );
+
             }
 
             stringBuilder.Append
-            (
-                '"'
-            );
+                (
+                    ')'
+                )
+                .Append
+                (
+                    '"'
+                );
 
             context.partialClass = context.partialClass.AddMembers
             (

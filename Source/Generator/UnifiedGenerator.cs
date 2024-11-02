@@ -99,7 +99,7 @@ namespace Til.Lombok.Generator {
             );
         }
 
-        private void generatedPartialClass(BasicsContext basicsContext) {
+        public static void generatedPartialClass(BasicsContext basicsContext) {
 
             foreach (GeneratorComponent generatorComponent in generatorComponentList) {
                 try {

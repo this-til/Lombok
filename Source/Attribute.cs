@@ -400,6 +400,8 @@ namespace Til.Lombok {
         public Dictionary<string, string>? _customFill;
 
         public PartialPos partialPos;
+        
+        //public bool allOverAgainGeneration;
 
         public IPartialAttribute() {
         }
@@ -409,6 +411,9 @@ namespace Til.Lombok {
             if (data.TryGetValue(nameof(this.model), out value)) {
                 this.model = value;
             }
+            /*if (data.TryGetValue(nameof(this.allOverAgainGeneration), out value)) {
+                this.allOverAgainGeneration = bool.TryParse(value, out _);
+            }*/
             if (data.TryGetValue(nameof(this.partialPos), out value)) {
                 Enum.TryParse(value, out partialPos);
             }

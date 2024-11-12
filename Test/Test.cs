@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace Til.Lombok.Test {
 
+
     [ILombok]
     [IFreeze]
     public partial class Demo {
@@ -132,20 +133,22 @@ public static class {type}EEE {{
     }
 
     [ILombok]
-    [IPartial(model = @"
+    [IPartial
+    (
+        model = @"
 
 [Get][Set]public int bb=0;
 [Get][Set]public int cc=0;
 
-")]
+"
+    )]
     public partial class DD {
 
-        [Get] 
+        [Get]
         [Set]
         public int aa;
 
     }
-    
 
     /*
     [ILombok] // 引入注释才能被扫描到类

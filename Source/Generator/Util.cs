@@ -33,7 +33,7 @@ namespace Til.Lombok.Generator {
 
         private static void AddSources(SourceProductionContext context, GeneratorResult result) {
             if (result.IsValid) {
-                context.AddSource($"{result.TypeName}.g.cs", result.Source);
+                context.AddSource($"{result.TypeName}.g.cs", result.Source!);
             }
             else if (result.Diagnostic is not null) {
                 context.ReportDiagnostic(result.Diagnostic);

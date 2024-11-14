@@ -10,37 +10,41 @@ namespace Til.Lombok.Generator {
 
         public readonly ClassDeclarationSyntax contextTargetNode;
 
+        public readonly NameSyntax contextNamespaceNameSyntax;
+
         public readonly SemanticModel semanticModel;
 
         public readonly GeneratorAttributeSyntaxContext context;
 
         public readonly CancellationToken cancellationToken;
 
-        public readonly Ptr<ClassDeclarationSyntax> partialClass;
+        public readonly List<MemberDeclarationSyntax> partialClassMemberDeclarationSyntaxList;
 
-        public readonly Ptr<NamespaceDeclarationSyntax> namespaceDeclarationSyntax;
+        public readonly List<MemberDeclarationSyntax> namespaceMemberDeclarationSyntaxList;
 
-        public readonly Ptr<CompilationUnitSyntax> compilationUnitSyntax;
+        public readonly List<MemberDeclarationSyntax> compilationMemberDeclarationSyntaxList;
 
         public BasicsContext? nestContext;
 
         public BasicsContext
         (
             ClassDeclarationSyntax contextTargetNode,
+            NameSyntax contextNamespaceNameSyntax,
             SemanticModel semanticModel,
             GeneratorAttributeSyntaxContext context,
             CancellationToken cancellationToken,
-            Ptr<ClassDeclarationSyntax> partialClass,
-            Ptr<NamespaceDeclarationSyntax> namespaceDeclarationSyntax,
-            Ptr<CompilationUnitSyntax> compilationUnitSyntax
+            List<MemberDeclarationSyntax> partialClassMemberDeclarationSyntaxList,
+            List<MemberDeclarationSyntax> namespaceMemberDeclarationSyntaxList,
+            List<MemberDeclarationSyntax> compilationMemberDeclarationSyntaxList
         ) {
             this.contextTargetNode = contextTargetNode;
+            this.contextNamespaceNameSyntax = contextNamespaceNameSyntax;
             this.semanticModel = semanticModel;
             this.context = context;
             this.cancellationToken = cancellationToken;
-            this.partialClass = partialClass;
-            this.namespaceDeclarationSyntax = namespaceDeclarationSyntax;
-            this.compilationUnitSyntax = compilationUnitSyntax;
+            this.partialClassMemberDeclarationSyntaxList = partialClassMemberDeclarationSyntaxList;
+            this.namespaceMemberDeclarationSyntaxList = namespaceMemberDeclarationSyntaxList;
+            this.compilationMemberDeclarationSyntaxList = compilationMemberDeclarationSyntaxList;
         }
 
     }
@@ -61,10 +65,7 @@ namespace Til.Lombok.Generator {
 
         public readonly PropertyDeclarationSyntax? propertyDeclarationSyntax;
 
-        public ClassDeclarationSyntax partialClass {
-            get => basicsContext.partialClass;
-            set => basicsContext.partialClass.value = value;
-        }
+        public List<MemberDeclarationSyntax> partialClassMemberDeclarationSyntaxList => basicsContext.partialClassMemberDeclarationSyntaxList;
 
         public FieldsContext
         (
@@ -144,10 +145,7 @@ namespace Til.Lombok.Generator {
 
         public readonly AttributeContext<A> attributeContext;
 
-        public ClassDeclarationSyntax partialClass {
-            get => basicsContext.partialClass;
-            set => basicsContext.partialClass.value = value;
-        }
+        public List<MemberDeclarationSyntax> partialClassMemberDeclarationSyntaxList => basicsContext.partialClassMemberDeclarationSyntaxList;
 
         public FieldsAttributeContext
         (
@@ -170,10 +168,7 @@ namespace Til.Lombok.Generator {
 
         public readonly AttributeContext<A> attributeContext;
 
-        public ClassDeclarationSyntax partialClass {
-            get => basicsContext.partialClass;
-            set => basicsContext.partialClass.value = value;
-        }
+        public List<MemberDeclarationSyntax> partialClassMemberDeclarationSyntaxList => basicsContext.partialClassMemberDeclarationSyntaxList;
 
         public ClassAttributeContext(BasicsContext basicsContext, AttributeContext<A> attributeContext) {
             this.basicsContext = basicsContext;
@@ -190,10 +185,7 @@ namespace Til.Lombok.Generator {
 
         public readonly List<FieldsAttributeContext<FA>> fieldsAttributeContextList;
 
-        public ClassDeclarationSyntax partialClass {
-            get => basicsContext.partialClass;
-            set => basicsContext.partialClass.value = value;
-        }
+        public List<MemberDeclarationSyntax> partialClassMemberDeclarationSyntaxList => basicsContext.partialClassMemberDeclarationSyntaxList;
 
         public ClassFieldAttributeContext
         (

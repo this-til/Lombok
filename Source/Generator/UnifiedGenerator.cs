@@ -41,48 +41,29 @@ namespace Til.Lombok.Generator {
                 return new GeneratorResult(diagnostic!);
             }
 
-            Ptr<ClassDeclarationSyntax> partialClass = new Ptr<ClassDeclarationSyntax>
-            (
-                contextTargetNode.CreateNewPartialClass()
-            );
-            Ptr<NamespaceDeclarationSyntax> namespaceDeclarationSyntax = new Ptr<NamespaceDeclarationSyntax>
-            (
-                NamespaceDeclaration
-                (
-                    @namespace!
-                )
-            );
-            Ptr<CompilationUnitSyntax> compilationUnitSyntax = new Ptr<CompilationUnitSyntax>
-            (
-                CompilationUnit()
-                    .WithUsings
-                    (
-                        contextTargetNode.GetUsings()
-                    )
-            );
+            List<MemberDeclarationSyntax> partialClassMemberDeclarationSyntaxList = new List<MemberDeclarationSyntax>();
+            List<MemberDeclarationSyntax> namespaceMemberDeclarationSyntaxList = new List<MemberDeclarationSyntax>();
+            List<MemberDeclarationSyntax> compilationMemberDeclarationSyntaxList = new List<MemberDeclarationSyntax>();
 
             BasicsContext basicsContext = new BasicsContext
             (
                 contextTargetNode,
+                @namespace,
                 semanticModel,
                 context,
                 cancellationToken,
-                partialClass,
-                namespaceDeclarationSyntax,
-                compilationUnitSyntax
+                partialClassMemberDeclarationSyntaxList,
+                namespaceMemberDeclarationSyntaxList,
+                compilationMemberDeclarationSyntaxList
             );
 
             generatedPartialClass(basicsContext);
 
-            namespaceDeclarationSyntax.value = basicsContext.namespaceDeclarationSyntax.value.AddMembers
-            (
-                basicsContext.partialClass
-            );
-
-            compilationUnitSyntax.value = basicsContext.compilationUnitSyntax.value.AddMembers
-                (
-                    basicsContext.namespaceDeclarationSyntax
-                )
+            ClassDeclarationSyntax partialClass = contextTargetNode.CreateNewPartialClass().AddMembers(partialClassMemberDeclarationSyntaxList.ToArray());
+            NamespaceDeclarationSyntax namespaceDeclarationSyntax = NamespaceDeclaration(@namespace).AddMembers(namespaceMemberDeclarationSyntaxList.Concat(new[] { partialClass }).ToArray());
+            CompilationUnitSyntax compilationUnitSyntax = CompilationUnit()
+                .WithUsings(contextTargetNode.GetUsings())
+                .AddMembers(compilationMemberDeclarationSyntaxList.Concat(new[] { namespaceDeclarationSyntax }).ToArray())
                 .NormalizeWhitespace();
 
             return new GeneratorResult
@@ -93,7 +74,7 @@ namespace Til.Lombok.Generator {
                 ),
                 SourceText.From
                 (
-                    basicsContext.compilationUnitSyntax.value.ToFullString(),
+                    compilationUnitSyntax.ToFullString(),
                     Encoding.UTF8
                 )
             );
@@ -110,7 +91,7 @@ namespace Til.Lombok.Generator {
                 }
             }
 
-            basicsContext.partialClass.value = basicsContext.partialClass.value.AddMembers
+            basicsContext.partialClassMemberDeclarationSyntaxList.AddRange
             (
                 basicsContext.contextTargetNode.Members
                     .OfType<ClassDeclarationSyntax>()
@@ -118,16 +99,17 @@ namespace Til.Lombok.Generator {
                     .Select
                     (
                         c => {
-                            Ptr<ClassDeclarationSyntax> partialClass = new Ptr<ClassDeclarationSyntax>(c.CreateNewPartialClass());
+                            List<MemberDeclarationSyntax> partialClassMemberDeclarationSyntaxList = new List<MemberDeclarationSyntax>();
                             BasicsContext context = new BasicsContext
                             (
                                 c,
+                                basicsContext.contextNamespaceNameSyntax,
                                 basicsContext.semanticModel,
                                 basicsContext.context,
                                 basicsContext.cancellationToken,
-                                partialClass,
-                                basicsContext.namespaceDeclarationSyntax,
-                                basicsContext.compilationUnitSyntax
+                                partialClassMemberDeclarationSyntaxList,
+                                basicsContext.namespaceMemberDeclarationSyntaxList,
+                                basicsContext.compilationMemberDeclarationSyntaxList
                             ) {
                                 nestContext = basicsContext
                             };
@@ -135,7 +117,7 @@ namespace Til.Lombok.Generator {
                             (
                                 context
                             );
-                            return context.partialClass.value;
+                            return c.CreateNewPartialClass().AddMembers(partialClassMemberDeclarationSyntaxList.ToArray());
                         }
                     )
                     .OfType<MemberDeclarationSyntax>()

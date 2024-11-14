@@ -92,7 +92,7 @@ namespace Til.Lombok.Generator {
 
     }
 
-    public abstract class FieldsAttributeGeneratorComponent<A> : FieldsGeneratorComponent where A : MetadataAttribute {
+    public abstract class FieldsAttributeGeneratorComponent<A> : FieldsGeneratorComponent where A : Attribute {
 
         protected virtual A restore(Dictionary<string, string> data) {
             return (A)Activator.CreateInstance(typeof(A), data);
@@ -389,7 +389,7 @@ namespace Til.Lombok.Generator {
 
         protected sealed override void fill(FieldsAttributeContext<GetAttribute> fieldsAttributeContext) {
 
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -424,7 +424,7 @@ namespace Til.Lombok.Generator {
     public sealed class OpenGenerator : FieldsAttributeGeneratorComponent<OpenAttribute> {
 
         protected override void fill(FieldsAttributeContext<OpenAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -500,7 +500,7 @@ namespace Til.Lombok.Generator {
     public sealed class SetGenerator : FieldsAttributeGeneratorComponent<SetAttribute> {
 
         protected override void fill(FieldsAttributeContext<SetAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -564,7 +564,7 @@ namespace Til.Lombok.Generator {
     public sealed class CountGenerator : FieldsAttributeGeneratorComponent<CountAttribute> {
 
         protected override void fill(FieldsAttributeContext<CountAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -591,7 +591,7 @@ namespace Til.Lombok.Generator {
     public sealed class IndexGenerator : FieldsAttributeGeneratorComponent<IndexAttribute> {
 
         protected override void fill(FieldsAttributeContext<IndexAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -654,7 +654,7 @@ namespace Til.Lombok.Generator {
     public sealed class AddGenerator : FieldsAttributeGeneratorComponent<AddAttribute> {
 
         protected override void fill(FieldsAttributeContext<AddAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -736,7 +736,7 @@ namespace Til.Lombok.Generator {
     public sealed class RemoveGenerator : FieldsAttributeGeneratorComponent<RemoveAttribute> {
 
         protected override void fill(FieldsAttributeContext<RemoveAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -818,7 +818,7 @@ namespace Til.Lombok.Generator {
     public sealed class ContainGenerator : FieldsAttributeGeneratorComponent<ContainAttribute> {
 
         protected override void fill(FieldsAttributeContext<ContainAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -900,7 +900,7 @@ namespace Til.Lombok.Generator {
     public sealed class ForGenerator : FieldsAttributeGeneratorComponent<ForAttribute> {
 
         protected override void fill(FieldsAttributeContext<ForAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -970,7 +970,7 @@ namespace Til.Lombok.Generator {
     public sealed class PutGenerator : FieldsAttributeGeneratorComponent<PutAttribute> {
 
         protected override void fill(FieldsAttributeContext<PutAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -1147,7 +1147,7 @@ namespace Til.Lombok.Generator {
     public sealed class MapGetGenerator : FieldsAttributeGeneratorComponent<MapGetAttribute> {
 
         protected override void fill(FieldsAttributeContext<MapGetAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -1264,7 +1264,7 @@ namespace Til.Lombok.Generator {
     public sealed class RemoveKeyGenerator : FieldsAttributeGeneratorComponent<RemoveKeyAttribute> {
 
         protected override void fill(FieldsAttributeContext<RemoveKeyAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -1342,7 +1342,7 @@ namespace Til.Lombok.Generator {
     public sealed class RemoveValueGenerator : FieldsAttributeGeneratorComponent<RemoveValueAttribute> {
 
         protected override void fill(FieldsAttributeContext<RemoveValueAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -1420,7 +1420,7 @@ namespace Til.Lombok.Generator {
     public sealed class ContainKeyGenerator : FieldsAttributeGeneratorComponent<ContainKeyAttribute> {
 
         protected override void fill(FieldsAttributeContext<ContainKeyAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -1498,7 +1498,7 @@ namespace Til.Lombok.Generator {
     public sealed class ContainValueGenerator : FieldsAttributeGeneratorComponent<ContainValueAttribute> {
 
         protected override void fill(FieldsAttributeContext<ContainValueAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -1576,7 +1576,7 @@ namespace Til.Lombok.Generator {
     public sealed class ForKeyGenerator : FieldsAttributeGeneratorComponent<ForKeyAttribute> {
 
         protected override void fill(FieldsAttributeContext<ForKeyAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -1662,7 +1662,7 @@ namespace Til.Lombok.Generator {
     public sealed class ForValueGenerator : FieldsAttributeGeneratorComponent<ForValueAttribute> {
 
         protected override void fill(FieldsAttributeContext<ForValueAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -1748,7 +1748,7 @@ namespace Til.Lombok.Generator {
     public sealed class ForAllGenerator : FieldsAttributeGeneratorComponent<ForAllAttribute> {
 
         protected override void fill(FieldsAttributeContext<ForAllAttribute> fieldsAttributeContext) {
-            fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers
+            fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -1815,13 +1815,20 @@ namespace Til.Lombok.Generator {
     }
 
     [GeneratorComponent]
+    public sealed class PartialFieldsGenerator : FieldsAttributeGeneratorComponent<IPartialAttribute> {
+
+        protected override void fill(FieldsAttributeContext<IPartialAttribute> fieldsAttributeContext) {
+            PartialGenerator.fill(fieldsAttributeContext.attributeContext.firstAttribute, fieldsAttributeContext.basicsContext);
+        }
+
+    }
+
+    [GeneratorComponent]
     public sealed class PartialGenerator : ClassAttributeGeneratorComponent<IPartialAttribute> {
 
-        protected override void fill(ClassAttributeContext<IPartialAttribute> fieldsAttributeContext) {
+        public static void fill(IPartialAttribute partialAttribute, BasicsContext basicsContext) {
 
-            AttributeContext<IPartialAttribute> attributeContext = fieldsAttributeContext.attributeContext;
-
-            string? model = attributeContext.firstAttribute.model;
+            string? model = partialAttribute.model;
 
             if (model is null) {
                 return;
@@ -1829,13 +1836,25 @@ namespace Til.Lombok.Generator {
 
             Dictionary<string, string> fillMap = new Dictionary<string, string>();
 
-            if (attributeContext.firstAttribute._customFill is not null) {
-                foreach (KeyValuePair<string, string> keyValuePair in attributeContext.firstAttribute._customFill) {
+            if (partialAttribute._customFill is not null) {
+                foreach (KeyValuePair<string, string> keyValuePair in partialAttribute._customFill) {
                     fillMap[keyValuePair.Key] = keyValuePair.Value;
                 }
             }
-            fillMap["type"] = fieldsAttributeContext.basicsContext.contextTargetNode.toClassName();
-            fillMap["namespace"] = fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value.Name.ToString();
+
+            string typeName = basicsContext.contextTargetNode.toClassName();
+
+            List<string> quote = new List<string>();
+            BasicsContext _b = basicsContext;
+            do {
+                quote.Add(_b.contextTargetNode.toClassName());
+                _b = _b.nestContext!;
+            } while (_b != null);
+
+            fillMap["type"] = typeName;
+            fillMap["fullType"] = string.Join(".", quote);
+            fillMap["fullType_underline"] = string.Join("_", quote);
+            fillMap["namespace"] = basicsContext.contextNamespaceNameSyntax.ToString();
 
             StringBuilder stringBuilder = new StringBuilder();
             model.format
@@ -1853,81 +1872,97 @@ namespace Til.Lombok.Generator {
                 .OfType<MemberDeclarationSyntax>()
                 .ToArray();
 
-            switch (attributeContext.firstAttribute.partialPos) {
+            List<MemberDeclarationSyntax> joinMemberDeclarationSyntaxList;
+            BasicsContext? nestContext = null;
+
+            switch (partialAttribute.partialPos) {
                 case PartialPos.Interior:
-                    fieldsAttributeContext.partialClass = fieldsAttributeContext.partialClass.AddMembers(memberDeclarationSyntaxes);
+                    joinMemberDeclarationSyntaxList = basicsContext.partialClassMemberDeclarationSyntaxList;
+                    nestContext = basicsContext.nestContext;
                     break;
                 case PartialPos.UpLevel:
-                    if (fieldsAttributeContext.basicsContext.nestContext is not null) {
-                        fieldsAttributeContext.basicsContext.nestContext.partialClass.value = fieldsAttributeContext.basicsContext.nestContext.partialClass.value.AddMembers(memberDeclarationSyntaxes);
+                    if (basicsContext.nestContext is not null) {
+                        joinMemberDeclarationSyntaxList = basicsContext.nestContext.partialClassMemberDeclarationSyntaxList;
                         break;
                     }
-                    fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value = fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value.AddMembers(memberDeclarationSyntaxes);
-                    break;
-                case PartialPos.Namespace:
-                    fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value = fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value.AddMembers(memberDeclarationSyntaxes);
+                    joinMemberDeclarationSyntaxList = basicsContext.namespaceMemberDeclarationSyntaxList;
+                    nestContext = basicsContext.nestContext;
                     break;
                 case PartialPos.Compilation:
-                    fieldsAttributeContext.basicsContext.compilationUnitSyntax.value = fieldsAttributeContext.basicsContext.compilationUnitSyntax.value.AddMembers(memberDeclarationSyntaxes);
+                    joinMemberDeclarationSyntaxList = basicsContext.compilationMemberDeclarationSyntaxList;
                     break;
+                case PartialPos.Namespace:
+                    joinMemberDeclarationSyntaxList = basicsContext.namespaceMemberDeclarationSyntaxList;
+                    break;
+                default:
+                    return;
             }
 
-            /*
-            if (!attributeContext.firstAttribute.allOverAgainGeneration) {
-                return;
-            }
+            List<ClassDeclarationSyntax> classDeclarationSyntaxList = memberDeclarationSyntaxes.OfType<ClassDeclarationSyntax>().ToList();
+            List<MemberDeclarationSyntax> interiorMemberDeclarationSyntax = memberDeclarationSyntaxes.Where(m => m is not ClassDeclarationSyntax).ToList();
 
-            List<ClassDeclarationSyntax> classDeclarationSyntaxes = memberDeclarationSyntaxes.OfType<ClassDeclarationSyntax>().ToList();
+            for (int index = 0; index < classDeclarationSyntaxList.Count; index++) {
+                ClassDeclarationSyntax classDeclarationSyntax = classDeclarationSyntaxList[index];
 
-            MemberDeclarationSyntax[] declarationSyntaxes = memberDeclarationSyntaxes.Where(m => m is not ClassDeclarationSyntax).ToArray();
-
-            if (declarationSyntaxes.Length > 0 && attributeContext.firstAttribute.partialPos == PartialPos.Interior) {
-
-                classDeclarationSyntaxes.Add(fieldsAttributeContext.basicsContext.partialClass.value.CreateNewPartialClass().AddMembers(declarationSyntaxes));
-
-            }
-            
-
-            foreach (ClassDeclarationSyntax classDeclarationSyntax in classDeclarationSyntaxes) {
-
-                Ptr<ClassDeclarationSyntax> partialClass = new Ptr<ClassDeclarationSyntax>(classDeclarationSyntax.CreateNewPartialClass());
-                
+                List<MemberDeclarationSyntax> partialClassMemberDeclarationSyntaxList = new List<MemberDeclarationSyntax>();
                 UnifiedGenerator.generatedPartialClass
                 (
                     new BasicsContext
                     (
                         classDeclarationSyntax,
-                        fieldsAttributeContext.basicsContext.semanticModel,
-                        fieldsAttributeContext.basicsContext.context,
-                        fieldsAttributeContext.basicsContext.cancellationToken,
-                        partialClass,
-                        fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax,
-                        fieldsAttributeContext.basicsContext.compilationUnitSyntax
+                        basicsContext.contextNamespaceNameSyntax,
+                        basicsContext.semanticModel,
+                        basicsContext.context,
+                        basicsContext.cancellationToken,
+                        partialClassMemberDeclarationSyntaxList,
+                        basicsContext.namespaceMemberDeclarationSyntaxList,
+                        basicsContext.compilationMemberDeclarationSyntaxList
                     ) {
-                        nestContext = fieldsAttributeContext.basicsContext
+                        nestContext = nestContext
                     }
                 );
-                
-                switch (attributeContext.firstAttribute.partialPos) {
-                    case PartialPos.Interior:
-                    case PartialPos.UpLevel:
-                        if (fieldsAttributeContext.basicsContext.nestContext is not null) {
-                            fieldsAttributeContext.basicsContext.nestContext.partialClass.value = fieldsAttributeContext.basicsContext.nestContext.partialClass.value.AddMembers(partialClass.value);
-                            break;
-                        }
-                        fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value = fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value.AddMembers(partialClass.value);
-                        break;
-                    case PartialPos.Namespace:
-                        fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value = fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value.AddMembers(partialClass.value);
-                        break;
-                    case PartialPos.Compilation:
-                        fieldsAttributeContext.basicsContext.compilationUnitSyntax.value = fieldsAttributeContext.basicsContext.compilationUnitSyntax.value.AddMembers(partialClass.value);
-                        break;
-                }
-                
+                classDeclarationSyntax = classDeclarationSyntax.AddMembers(partialClassMemberDeclarationSyntaxList.ToArray());
+                joinMemberDeclarationSyntaxList.Add(classDeclarationSyntax);
             }
-            */
 
+            joinMemberDeclarationSyntaxList.AddRange(interiorMemberDeclarationSyntax);
+
+            if (interiorMemberDeclarationSyntax.Count > 0) {
+
+                ClassDeclarationSyntax declarationSyntax = basicsContext.contextTargetNode.CreateNewPartialClass().AddMembers(memberDeclarationSyntaxes.Where(m => m is not ClassDeclarationSyntax).ToArray());
+
+                ClassDeclarationSyntax? classDeclarationSyntax = CSharpSyntaxTree.ParseText(declarationSyntax.NormalizeWhitespace().ToFullString())
+                    .GetRoot()
+                    .ChildNodes()
+                    .OfType<ClassDeclarationSyntax>()
+                    .FirstOrDefault();
+
+                if (classDeclarationSyntax is not null) {
+                    List<MemberDeclarationSyntax> partialClassMemberDeclarationSyntaxList = new List<MemberDeclarationSyntax>();
+                    UnifiedGenerator.generatedPartialClass
+                    (
+                        new BasicsContext
+                        (
+                            classDeclarationSyntax,
+                            basicsContext.contextNamespaceNameSyntax,
+                            basicsContext.semanticModel,
+                            basicsContext.context,
+                            basicsContext.cancellationToken,
+                            partialClassMemberDeclarationSyntaxList,
+                            basicsContext.namespaceMemberDeclarationSyntaxList,
+                            basicsContext.compilationMemberDeclarationSyntaxList
+                        ) {
+                            nestContext = nestContext
+                        }
+                    );
+                    joinMemberDeclarationSyntaxList.AddRange(partialClassMemberDeclarationSyntaxList);
+                }
+
+            }
+        }
+
+        protected override void fill(ClassAttributeContext<IPartialAttribute> fieldsAttributeContext) {
+            fill(fieldsAttributeContext.attributeContext.firstAttribute, fieldsAttributeContext.basicsContext);
         }
 
     }
@@ -1939,7 +1974,8 @@ namespace Til.Lombok.Generator {
 
             Dictionary<string, string> fillMap = new Dictionary<string, string>();
             fillMap["type"] = fieldsAttributeContext.basicsContext.contextTargetNode.toClassName();
-            fillMap["namespace"] = fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value.Name.ToString();
+
+            fillMap["namespace"] = fieldsAttributeContext.basicsContext.contextNamespaceNameSyntax.ToString();
             string model = @"
 
 public partial class {type} : Til.Lombok.IFreeze {{
@@ -1980,12 +2016,11 @@ public partial class {type} : Til.Lombok.IFreeze {{
                 .ToArray();
 
             if (fieldsAttributeContext.basicsContext.nestContext is not null) {
-                fieldsAttributeContext.basicsContext.nestContext.partialClass.value = fieldsAttributeContext.basicsContext.nestContext.partialClass.value.AddMembers(memberDeclarationSyntaxes);
+                fieldsAttributeContext.basicsContext.nestContext.partialClassMemberDeclarationSyntaxList.AddRange(memberDeclarationSyntaxes);
             }
             else {
-                fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value = fieldsAttributeContext.basicsContext.namespaceDeclarationSyntax.value.AddMembers(memberDeclarationSyntaxes);
+                fieldsAttributeContext.basicsContext.namespaceMemberDeclarationSyntaxList.AddRange(memberDeclarationSyntaxes);
             }
-
         }
 
     }
@@ -2046,7 +2081,7 @@ public partial class {type} : Til.Lombok.IFreeze {{
                     '"'
                 );
 
-            context.partialClass = context.partialClass.AddMembers
+            context.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -2220,7 +2255,7 @@ public partial class {type} : Til.Lombok.IFreeze {{
                 );
             }
 
-            context.partialClass = context.partialClass.AddMembers
+            context.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -2485,7 +2520,7 @@ public partial class {type} : Til.Lombok.IFreeze {{
                 )
             );
 
-            context.partialClass = context.partialClass.AddMembers
+            context.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (

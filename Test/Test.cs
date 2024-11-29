@@ -134,7 +134,7 @@ public static class {type}EEE {{
     */
 
     [ILombok]
-    [IPartial
+    /*[IPartial
     (
         model = @"
 [Get][Set]public int bb=0;
@@ -164,16 +164,28 @@ public partial class DD {{
 
 ",
         partialPos = PartialPos.Namespace
-    )]
+    )]*/
     public partial class DD {
 
         [Get]
         [Set]
-        public int aa;
+        [IPartial
+        (
+            model = @"
+
+public partial class DD {{
+    [Add]
+    public List<Func<int>> {field:toCamelCaseIdentifier} = new List<Func<int>>();
+}}
+
+",
+            partialPos = PartialPos.Namespace
+        )]
+        public int Aaa;
 
     }
 
-    [ILombok]
+    /*[ILombok]
     public partial class EE {
 
         [ILombok]
@@ -215,7 +227,7 @@ public partial class GGGG {{
 
         }
 
-    }
+    }*/
 
 }
 

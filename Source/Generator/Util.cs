@@ -851,9 +851,9 @@ namespace Til.Lombok.Generator {
         /// </summary>
         /// <param name="s">The string whose first character to lowercase.</param>
         /// <returns>The string with its first character lowercased.</returns>
-        public static string? Decapitalize(this string? s) {
+        public static string Decapitalize(this string? s) {
             if (s is null || char.IsLower(s[0])) {
-                return s;
+                return s ?? String.Empty;
             }
 
             return char.ToLower(s[0]) + s.Substring(1);
@@ -864,9 +864,9 @@ namespace Til.Lombok.Generator {
         /// </summary>
         /// <param name="s">The string whose first character to uppercase.</param>
         /// <returns>The string with its first character uppercased.</returns>
-        public static string? Capitalize(this string? s) {
+        public static string Capitalize(this string? s) {
             if (s is null || char.IsUpper(s[0])) {
-                return s;
+                return s ?? String.Empty;
             }
 
             return char.ToUpper(s[0]) + s.Substring(1);
@@ -895,12 +895,18 @@ namespace Til.Lombok.Generator {
         /// </summary>
         /// <param name="identifier">The identifier to get the property name for.</param>
         /// <returns>A PascalCase identifier.</returns>
-        public static string ToPascalCaseIdentifier(this string identifier) {
-            if (identifier.StartsWith("_")) {
-                identifier = identifier.Substring(1);
+        public static string toPascalCaseIdentifier(this string identifier) {
+            int tailor = -1;
+            for (var i = 0; i < identifier.Length; i++) {
+                if (identifier[i] != '_') {
+                    break;
+                }
+                tailor = i;
             }
-
-            return identifier.Capitalize()!;
+            if (tailor != -1) {
+                identifier = identifier.Substring(tailor + 1);
+            }
+            return identifier.Capitalize().Replace('.', '_');
         }
 
         /// <summary>
@@ -908,12 +914,18 @@ namespace Til.Lombok.Generator {
         /// </summary>
         /// <param name="identifier">The identifier to transform.</param>
         /// <returns>A camelCase identifier.</returns>
-        public static string ToCamelCaseIdentifier(this string identifier) {
-            if (identifier.StartsWith("_")) {
-                return identifier.Substring(1).Decapitalize()!;
+        public static string toCamelCaseIdentifier(this string identifier) {
+            int tailor = -1;
+            for (var i = 0; i < identifier.Length; i++) {
+                if (identifier[i] != '_') {
+                    break;
+                }
+                tailor = i;
             }
-
-            return identifier.Decapitalize()!;
+            if (tailor != -1) {
+                identifier = identifier.Substring(tailor + 1);
+            }
+            return identifier.Decapitalize().Replace('.', '_');
         }
 
     }
@@ -1016,7 +1028,7 @@ namespace Til.Lombok.Generator {
             }
 
             Console.WriteLine();
-            
+
             // 如果异常有内部异常，也打印出来  
             if (ex.InnerException != null) {
                 Console.WriteLine("Inner Exception:");
@@ -1171,7 +1183,7 @@ namespace Til.Lombok.Generator {
             if (metadataAttribute.customPrefix is not null) {
                 methodDeclarationSyntax = methodDeclarationSyntax.WithIdentifier
                 (
-                    Identifier($"{metadataAttribute.customPrefix}{fieldName.ToPascalCaseIdentifier()}")
+                    Identifier($"{metadataAttribute.customPrefix}{fieldName.toPascalCaseIdentifier()}")
                 );
             }
 
@@ -1398,7 +1410,7 @@ namespace Til.Lombok.Generator {
                                                 ThisExpression(),
                                                 IdentifierName
                                                 (
-                                                    "update" + fieldName.ToPascalCaseIdentifier()
+                                                    "update" + fieldName.toPascalCaseIdentifier()
                                                 )
                                             ),
                                             ArgumentList

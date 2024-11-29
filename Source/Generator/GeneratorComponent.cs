@@ -57,7 +57,7 @@ namespace Til.Lombok.Generator {
                         }
                         break;
                     }
-                    case PropertyDeclarationSyntax propertyDeclaration: {
+                    case PropertyDeclarationSyntax  propertyDeclaration: {
                         try {
                             fill
                             (
@@ -397,7 +397,7 @@ namespace Til.Lombok.Generator {
                         (
                             fieldsAttributeContext.typeContext.typeName
                         ),
-                        "get" + fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()
+                        "get" + fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()
                     )
                     .AddBodyStatements
                     (
@@ -432,7 +432,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        "open" + fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()
+                        "open" + fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()
                     )
                     .AddParameterListParameters
                     (
@@ -508,7 +508,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        "set" + fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()
+                        "set" + fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()
                     )
                     .AddParameterListParameters
                     (
@@ -517,7 +517,7 @@ namespace Til.Lombok.Generator {
                                 Identifier
                                 (
                                     fieldsAttributeContext.typeContext.fieldName
-                                        .ToCamelCaseIdentifier()
+                                        .toCamelCaseIdentifier()
                                         .genericEliminate()
                                 )
                             )
@@ -548,7 +548,7 @@ namespace Til.Lombok.Generator {
                                 IdentifierName
                                 (
                                     fieldsAttributeContext.typeContext.fieldName
-                                        .ToCamelCaseIdentifier()
+                                        .toCamelCaseIdentifier()
                                         .genericEliminate()
                                 )
                             )
@@ -572,7 +572,7 @@ namespace Til.Lombok.Generator {
                         (
                             "int"
                         ),
-                        $"countIn{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}"
+                        $"countIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddBodyStatements
                     (
@@ -599,7 +599,7 @@ namespace Til.Lombok.Generator {
                         (
                             fieldsAttributeContext.typeContext.listCellType
                         ),
-                        $"indexIn{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}"
+                        $"indexIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -662,7 +662,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        $"addIn{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier().genericEliminate()}"
+                        $"addIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier().genericEliminate()}"
                     )
                     .AddParameterListParameters
                     (
@@ -672,7 +672,7 @@ namespace Til.Lombok.Generator {
                                 (
                                     "a"
                                     + fieldsAttributeContext.typeContext.listCellType
-                                        .ToPascalCaseIdentifier()
+                                        .toPascalCaseIdentifier()
                                         .genericEliminate()
                                 )
                             )
@@ -717,7 +717,7 @@ namespace Til.Lombok.Generator {
                                             (
                                                 "a"
                                                 + fieldsAttributeContext.typeContext.listCellType
-                                                    .ToPascalCaseIdentifier()
+                                                    .toPascalCaseIdentifier()
                                                     .genericEliminate()
                                             ) // 引用参数i  
                                         )
@@ -744,7 +744,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        $"removeIn{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}"
+                        $"removeIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -754,7 +754,7 @@ namespace Til.Lombok.Generator {
                                 (
                                     "a"
                                     + fieldsAttributeContext.typeContext.listCellType
-                                        .ToPascalCaseIdentifier()
+                                        .toPascalCaseIdentifier()
                                         .genericEliminate()
                                 )
                             )
@@ -799,7 +799,7 @@ namespace Til.Lombok.Generator {
                                             (
                                                 "a"
                                                 + fieldsAttributeContext.typeContext.listCellType
-                                                    .ToPascalCaseIdentifier()
+                                                    .toPascalCaseIdentifier()
                                                     .genericEliminate()
                                             ) // 引用参数i  
                                         )
@@ -826,7 +826,7 @@ namespace Til.Lombok.Generator {
                         (
                             "bool"
                         ),
-                        $"containIn{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}"
+                        $"containIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -836,7 +836,7 @@ namespace Til.Lombok.Generator {
                                 (
                                     "a"
                                     + fieldsAttributeContext.typeContext.listCellType
-                                        .ToPascalCaseIdentifier()
+                                        .toPascalCaseIdentifier()
                                         .genericEliminate()
                                 )
                             )
@@ -881,7 +881,7 @@ namespace Til.Lombok.Generator {
                                             (
                                                 "a"
                                                 + fieldsAttributeContext.typeContext.listCellType
-                                                    .ToPascalCaseIdentifier()
+                                                    .toPascalCaseIdentifier()
                                                     .genericEliminate()
                                             )
                                         )
@@ -908,7 +908,7 @@ namespace Til.Lombok.Generator {
                         (
                             $"System.Collections.Generic.IEnumerable<{fieldsAttributeContext.typeContext.listCellType}>"
                         ),
-                        $"for{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}"
+                        $"for{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddBodyStatements
                     (
@@ -978,7 +978,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        $"putIn{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}"
+                        $"putIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -1155,7 +1155,7 @@ namespace Til.Lombok.Generator {
                         (
                             fieldsAttributeContext.typeContext.valueType
                         ),
-                        $"getIn{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}"
+                        $"getIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -1272,7 +1272,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        $"removeKeyIn{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}"
+                        $"removeKeyIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -1350,7 +1350,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        $"removeValueIn{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}"
+                        $"removeValueIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -1428,7 +1428,7 @@ namespace Til.Lombok.Generator {
                         (
                             "bool"
                         ),
-                        $"containKeyIn{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}"
+                        $"containKeyIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -1506,7 +1506,7 @@ namespace Til.Lombok.Generator {
                         (
                             "bool"
                         ),
-                        $"containValueIn{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}"
+                        $"containValueIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -1584,7 +1584,7 @@ namespace Til.Lombok.Generator {
                         (
                             $"System.Collections.Generic.IEnumerable<{fieldsAttributeContext.typeContext.keyType}>"
                         ),
-                        $"for{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}Key"
+                        $"for{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}Key"
                     )
                     .AddBodyStatements
                     (
@@ -1670,7 +1670,7 @@ namespace Til.Lombok.Generator {
                         (
                             $"System.Collections.Generic.IEnumerable<{fieldsAttributeContext.typeContext.valueType}>"
                         ),
-                        $"for{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}Value"
+                        $"for{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}Value"
                     )
                     .AddBodyStatements
                     (
@@ -1756,7 +1756,7 @@ namespace Til.Lombok.Generator {
                         (
                             $"System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<{fieldsAttributeContext.typeContext.keyType}, {fieldsAttributeContext.typeContext.valueType}>>"
                         ),
-                        $"for{fieldsAttributeContext.typeContext.fieldName.ToPascalCaseIdentifier()}"
+                        $"for{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddBodyStatements
                     (
@@ -1818,7 +1818,34 @@ namespace Til.Lombok.Generator {
     public sealed class PartialFieldsGenerator : FieldsAttributeGeneratorComponent<IPartialAttribute> {
 
         protected override void fill(FieldsAttributeContext<IPartialAttribute> fieldsAttributeContext) {
-            PartialGenerator.fill(fieldsAttributeContext.attributeContext.firstAttribute, fieldsAttributeContext.basicsContext);
+            BasicsContext basicsContext = fieldsAttributeContext.basicsContext;
+            IPartialAttribute partialAttribute = fieldsAttributeContext.attributeContext.firstAttribute;
+
+            Dictionary<string, string> fillMap = new Dictionary<string, string>();
+
+            if (partialAttribute._customFill is not null) {
+                foreach (KeyValuePair<string, string> keyValuePair in partialAttribute._customFill) {
+                    fillMap[keyValuePair.Key] = keyValuePair.Value;
+                }
+            }
+
+            string typeName = basicsContext.contextTargetNode.toClassName();
+
+            List<string> quote = new List<string>();
+            BasicsContext _b = basicsContext;
+            do {
+                quote.Add(_b.contextTargetNode.toClassName());
+                _b = _b.nestContext!;
+            } while (_b != null);
+
+            fillMap["type"] = typeName;
+            fillMap["fullType"] = string.Join(".", quote);
+            fillMap["fullType_underline"] = string.Join("_", quote);
+            fillMap["field"] = fieldsAttributeContext.typeContext.fieldName;
+            fillMap["fieldType"] = fieldsAttributeContext.typeContext.typeName;
+            fillMap["namespace"] = basicsContext.contextNamespaceNameSyntax.ToString();
+
+            PartialGenerator.fill(partialAttribute, basicsContext, fillMap);
         }
 
     }
@@ -1826,13 +1853,9 @@ namespace Til.Lombok.Generator {
     [GeneratorComponent]
     public sealed class PartialGenerator : ClassAttributeGeneratorComponent<IPartialAttribute> {
 
-        public static void fill(IPartialAttribute partialAttribute, BasicsContext basicsContext) {
-
-            string? model = partialAttribute.model;
-
-            if (model is null) {
-                return;
-            }
+        protected override void fill(ClassAttributeContext<IPartialAttribute> fieldsAttributeContext) {
+            BasicsContext basicsContext = fieldsAttributeContext.basicsContext;
+            IPartialAttribute partialAttribute = fieldsAttributeContext.attributeContext.firstAttribute;
 
             Dictionary<string, string> fillMap = new Dictionary<string, string>();
 
@@ -1856,14 +1879,41 @@ namespace Til.Lombok.Generator {
             fillMap["fullType_underline"] = string.Join("_", quote);
             fillMap["namespace"] = basicsContext.contextNamespaceNameSyntax.ToString();
 
+            fill(partialAttribute, basicsContext, fillMap);
+        }
+
+        public static void fill(IPartialAttribute partialAttribute, BasicsContext basicsContext, Dictionary<string, string> fillMap) {
+
+            string? model = partialAttribute.model;
+
+            if (model is null) {
+                return;
+            }
+
             StringBuilder stringBuilder = new StringBuilder();
             model.format
             (
                 stringBuilder,
-                k => stringBuilder.Append
-                (
-                    fillMap[k]
-                )
+                k => {
+                    
+                    string[] ks = k.Split(':');
+
+                    string f = ks.Length > 2
+                        ? String.Empty
+                        : ks[1];
+                    string value = fillMap[ks [0]];
+
+                    switch (f) {
+                        case nameof(StringExtensions.toCamelCaseIdentifier) :
+                            value = value.toCamelCaseIdentifier();
+                            break;
+                        case nameof(StringExtensions.toPascalCaseIdentifier) :
+                            value = value.toPascalCaseIdentifier();
+                            break;
+                    }
+                    
+                    stringBuilder.Append(value);
+                }
             );
 
             MemberDeclarationSyntax[] memberDeclarationSyntaxes = CSharpSyntaxTree.ParseText(stringBuilder.ToString())
@@ -1959,10 +2009,6 @@ namespace Til.Lombok.Generator {
                 }
 
             }
-        }
-
-        protected override void fill(ClassAttributeContext<IPartialAttribute> fieldsAttributeContext) {
-            fill(fieldsAttributeContext.attributeContext.firstAttribute, fieldsAttributeContext.basicsContext);
         }
 
     }

@@ -390,7 +390,7 @@ namespace Til.Lombok {
 
     }
 
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Field, AllowMultiple = true)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
     public class IPartialAttribute : Attribute {
 
         public string? model;

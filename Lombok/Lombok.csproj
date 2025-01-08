@@ -1,0 +1,77 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <LangVersion>9</LangVersion>
+        <Nullable>enable</Nullable>
+        <PackageId>Til.Lombok</PackageId>
+        <Version>3.0.0</Version>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        <Authors>til</Authors>
+        <Title>由于作者太懒了专门开发的代码生成器</Title>
+        <Description>相比于Lombok.NET开发了更多功能</Description>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/this-til/Lombok</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/this-til/Lombok</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>lombok dotnet source-generators roslyn</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <Copyright>2024 © til</Copyright>
+        <language>zh-CN</language>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <EnablePackageValidation>true</EnablePackageValidation>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <NoWarn>RS2008</NoWarn>
+        <NoWarn>CS1591</NoWarn>
+    </PropertyGroup>
+
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.12.0" ReferenceOutputAssembly="true" GeneratePathProperty="true" PrivateAssets="all"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.Scripting.Common" Version="4.12.0" ReferenceOutputAssembly="true" GeneratePathProperty="true" PrivateAssets="all"/>
+        <!-- <PackageReference Include="System.CodeDom" Version="9.0.0" eneratePathProperty="true" PrivateAssets="all"/>-->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.12.0" ReferenceOutputAssembly="true" PrivateAssets="all"/>
+        <None
+                Include="$(OutputPath)\$(AssemblyName).dll"
+                Pack="true"
+                PackagePath="analyzers/dotnet/cs"
+                Visible="false"
+        />
+
+        <None
+                Include="$(PkgMicrosoft_CodeAnalysis_CSharp_Scripting)\lib\netstandard2.0\*.dll"
+                Pack="true"
+                PackagePath="analyzers/dotnet/cs"
+                Visible="false"
+        />
+        <None
+                Include="$(PkgMicrosoft_CodeAnalysis_Scripting_Common)\lib\netstandard2.0\*.dll"
+                Pack="true"
+                PackagePath="analyzers/dotnet/cs"
+                Visible="false"
+        />
+        <!--<None
+                Include="$(PKGSystem_CodeDom)\lib\netstandard2.0\System.CodeDom.dll"
+                Pack="true"
+                PackagePath="analyzers/dotnet/cs"
+                Visible="false"
+        />-->
+    </ItemGroup>
+
+    <PropertyGroup>
+        <GetTargetPathDependsOn>$(GetTargetPathDependsOn);GetDependencyTargetPaths</GetTargetPathDependsOn>
+    </PropertyGroup>
+
+    <Target Name="GetDependencyTargetPaths">
+        <ItemGroup>
+            <!--<TargetPathWithTargetPlatformMoniker Include="$(PKGSystem_CodeDom)\lib\netstandard2.0\System.CodeDom.dll" IncludeRuntimeDependency="false" />-->
+            <TargetPathWithTargetPlatformMoniker Include="$(PKGMicrosoft_CodeAnalysis_CSharp_Scripting)\lib\netstandard2.0\*.dll" IncludeRuntimeDependency="false"/>
+            <TargetPathWithTargetPlatformMoniker Include="$(PkgMicrosoft_CodeAnalysis_Scripting_Common)\lib\netstandard2.0\*.dll" IncludeRuntimeDependency="false"/>
+        </ItemGroup>
+    </Target>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="/"/>
+    </ItemGroup>
+
+</Project>

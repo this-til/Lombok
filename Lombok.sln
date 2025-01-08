@@ -1,8 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lombok", "Lombok\Lombok.csproj", "{DBD35634-CB39-4C89-AD40-B308E943AC76}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lombok", "Lombok\Lombok.csproj", "{1679521D-14B3-4F79-9461-DB2487E62C36}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lombok.Test", "Lombok.Test\Lombok.Test.csproj", "{4BBF4A1C-7E21-4B2C-A860-1CB4BB58FAA7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lombok.Test", "Lombok.Test\Lombok.Test.csproj", "{2032ADAA-8EAF-4C04-A509-236D3DDCE0FE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -10,15 +10,13 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{DBD35634-CB39-4C89-AD40-B308E943AC76}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DBD35634-CB39-4C89-AD40-B308E943AC76}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DBD35634-CB39-4C89-AD40-B308E943AC76}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DBD35634-CB39-4C89-AD40-B308E943AC76}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4BBF4A1C-7E21-4B2C-A860-1CB4BB58FAA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4BBF4A1C-7E21-4B2C-A860-1CB4BB58FAA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4BBF4A1C-7E21-4B2C-A860-1CB4BB58FAA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4BBF4A1C-7E21-4B2C-A860-1CB4BB58FAA7}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
+		{1679521D-14B3-4F79-9461-DB2487E62C36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1679521D-14B3-4F79-9461-DB2487E62C36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1679521D-14B3-4F79-9461-DB2487E62C36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1679521D-14B3-4F79-9461-DB2487E62C36}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2032ADAA-8EAF-4C04-A509-236D3DDCE0FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2032ADAA-8EAF-4C04-A509-236D3DDCE0FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2032ADAA-8EAF-4C04-A509-236D3DDCE0FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2032ADAA-8EAF-4C04-A509-236D3DDCE0FE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

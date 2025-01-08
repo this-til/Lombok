@@ -36,13 +36,12 @@ namespace Til.Lombok.Generator {
                                     new FieldsContext
                                     (
                                         basicsContext,
+                                        variableDeclaratorSyntax.Identifier.ToString(),
                                         new TypeContext
                                         (
-                                            variableDeclaratorSyntax.Identifier.ToString(),
                                             fieldDeclaration.Declaration.Type.ToString(),
-                                            basicsContext.contextTargetNode.getHasGenericName()
+                                            fieldDeclaration.Declaration.Type
                                         ),
-                                        fieldDeclaration.Declaration.Type,
                                         fieldDeclaration.AttributeLists,
                                         fieldDeclaration,
                                         variableDeclaratorSyntax,
@@ -57,20 +56,19 @@ namespace Til.Lombok.Generator {
                         }
                         break;
                     }
-                    case PropertyDeclarationSyntax  propertyDeclaration: {
+                    case PropertyDeclarationSyntax propertyDeclaration: {
                         try {
                             fill
                             (
                                 new FieldsContext
                                 (
                                     basicsContext,
+                                    propertyDeclaration.Identifier.ToString(),
                                     new TypeContext
                                     (
-                                        propertyDeclaration.Identifier.ToString(),
                                         propertyDeclaration.Type.ToString(),
-                                        basicsContext.contextTargetNode.getHasGenericName()
+                                        propertyDeclaration.Type
                                     ),
-                                    propertyDeclaration.Type,
                                     propertyDeclaration.AttributeLists,
                                     null,
                                     null,
@@ -92,7 +90,7 @@ namespace Til.Lombok.Generator {
 
     }
 
-    public abstract class FieldsAttributeGeneratorComponent<A> : FieldsGeneratorComponent where A : Attribute {
+    public abstract class FieldsAttributeGeneratorComponent<A> : FieldsGeneratorComponent where A : MetadataAttribute {
 
         protected virtual A restore(Dictionary<string, string> data) {
             return (A)Activator.CreateInstance(typeof(A), data);
@@ -105,95 +103,202 @@ namespace Til.Lombok.Generator {
                 return;
             }
 
-            List<A> attributeList = attributeSyntaxeList.Select
+            IReadOnlyList<AttributeContext<A>> attributeContexts = attributeSyntaxeList.Select
                 (
-                    a => restore
-                    (
-                        a.getAttributeArgumentsAsDictionary
+                    syntax => {
+                        A attribute = restore
                         (
-                            fieldsContext.basicsContext.semanticModel
-                        )
-                    )
+                            syntax.getAttributeArgumentsAsDictionary
+                            (
+                                fieldsContext.basicsContext.semanticModel
+                            )
+                        );
+                        return new AttributeContext<A>
+                        (
+                            attribute,
+                            syntax
+                        );
+                    }
                 )
-                .ToList();
+                .Where(a => a != null)
+                .ToList()!;
 
-            for (var i = 0; i < attributeList.Count; i++) {
-
-                AttributeContext<A> attributeContext = new AttributeContext<A>
+            try {
+                fill
                 (
-                    attributeList[i],
-                    attributeSyntaxeList[i],
-                    attributeList,
-                    attributeSyntaxeList
-                );
-
-                switch (attributeContext.firstAttribute) {
-                    case ListMetadataAttribute listMetadataAttribute: {
-                        fieldsContext.typeContext.listCellType = listMetadataAttribute.listCellType!;
-
-                        if (fieldsContext.typeSyntax is GenericNameSyntax genericNameSyntax) {
-                            if (genericNameSyntax.TypeArgumentList.Arguments.Count > 0) {
-                                TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
-                                fieldsContext.typeContext.listCellType ??= firstOrDefault?.ToFullString()!;
-                            }
-                        }
-                        if (fieldsContext.typeContext.listCellType is null) {
-                            return;
-                        }
-                        break;
-                    }
-
-                    case MapMetadataAttribute mapMetadataAttribute: {
-                        fieldsContext.typeContext.keyType = mapMetadataAttribute.keyType!;
-                        fieldsContext.typeContext.valueType = mapMetadataAttribute.valueType!;
-
-                        if (fieldsContext.typeSyntax is GenericNameSyntax genericNameSyntax) {
-                            if (genericNameSyntax.TypeArgumentList.Arguments.Count > 0) {
-                                TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments.FirstOrDefault();
-                                fieldsContext.typeContext.keyType ??= firstOrDefault?.ToFullString()!;
-                            }
-                            if (genericNameSyntax.TypeArgumentList.Arguments.Count > 1) {
-                                TypeSyntax? firstOrDefault = genericNameSyntax.TypeArgumentList.Arguments[1];
-                                fieldsContext.typeContext.valueType ??= firstOrDefault?.ToFullString()!;
-                            }
-                        }
-
-                        if (fieldsContext.typeContext.keyType is null || fieldsContext.typeContext.valueType is null) {
-                            return;
-                        }
-
-                        break;
-                    }
-
-                    case MetadataAttribute metadataAttribute: {
-                        if (metadataAttribute.customType is not null) {
-                            fieldsContext.typeContext.typeName = metadataAttribute.customType;
-                        }
-                        break;
-                    }
-                }
-
-                try {
-                    fill
+                    new FieldsAttributeContext<A>
                     (
-                        new FieldsAttributeContext<A>
-                        (
-                            fieldsContext.basicsContext,
-                            fieldsContext,
-                            fieldsContext.typeContext,
-                            attributeContext
-                        )
-                    );
-                }
-                catch (Exception e) {
-                    e.PrintExceptionSummaryAndStackTrace();
-                }
-
+                        fieldsContext.basicsContext,
+                        fieldsContext,
+                        attributeContexts
+                    )
+                );
+            }
+            catch (Exception e) {
+                e.PrintExceptionSummaryAndStackTrace();
             }
 
         }
 
         protected abstract void fill(FieldsAttributeContext<A> fieldsAttributeContext);
+
+    }
+
+    public abstract class DistributeFieldsAttributeGeneratorComponent<A> : FieldsAttributeGeneratorComponent<A> where A : MetadataAttribute {
+
+        protected sealed override void fill(FieldsAttributeContext<A> fieldsAttributeContext) {
+            foreach (AttributeContext<A> attributeContext in fieldsAttributeContext.attributeContext) {
+                TypeContext typeContext = new TypeContext(fieldsAttributeContext.fieldsContext.typeContext);
+                typeContext.receive(attributeContext.attribute);
+                fieldsAttributeContext.fieldsContext.typeContext = typeContext;
+                try {
+                    fill(fieldsAttributeContext, attributeContext);
+                }
+                catch (Exception e) {
+                    e.PrintExceptionSummaryAndStackTrace();
+                }
+            }
+        }
+
+        protected abstract void fill(FieldsAttributeContext<A> fieldsAttributeContext, AttributeContext<A> attributeContext);
+
+    }
+
+    public abstract class ListDistributeFieldsAttributeGeneratorComponent<A> : DistributeFieldsAttributeGeneratorComponent<A> where A : ListMetadataAttribute {
+
+        protected override void fill(FieldsAttributeContext<A> fieldsAttributeContext, AttributeContext<A> attributeContext) {
+            string? listCellType = attributeContext.attribute.listCellType ?? fieldsAttributeContext.fieldsContext.typeContext.tryGetGenericTypeContexts(0)?.typeName;
+            if (listCellType is null) {
+                return;
+            }
+            fill(fieldsAttributeContext, attributeContext, new ListTypeContext(fieldsAttributeContext.fieldsContext.typeContext, listCellType));
+        }
+
+        protected abstract void fill(FieldsAttributeContext<A> fieldsAttributeContext, AttributeContext<A> attributeContext, ListTypeContext listTypeContext);
+
+    }
+
+    public abstract class MapDistributeFieldsAttributeGeneratorComponent<A> : DistributeFieldsAttributeGeneratorComponent<A> where A : MapMetadataAttribute {
+
+        protected override void fill(FieldsAttributeContext<A> fieldsAttributeContext, AttributeContext<A> attributeContext) {
+            string? keyTypeName = attributeContext.attribute.keyType ?? fieldsAttributeContext.fieldsContext.typeContext.tryGetGenericTypeContexts(0)?.typeName;
+            string? valueTypeName = attributeContext.attribute.valueType ?? fieldsAttributeContext.fieldsContext.typeContext.tryGetGenericTypeContexts(1)?.typeName;
+            if (keyTypeName is null || valueTypeName is null) {
+                return;
+            }
+            fill(fieldsAttributeContext, attributeContext, new MapTypeContext(fieldsAttributeContext.fieldsContext.typeContext, keyTypeName, valueTypeName));
+        }
+
+        protected abstract void fill(FieldsAttributeContext<A> fieldsAttributeContext, AttributeContext<A> attributeContext, MapTypeContext mapTypeContext);
+
+    }
+
+    public abstract class MethodGeneratorComponent : GeneratorComponent {
+
+        public sealed override void fill(BasicsContext basicsContext) {
+            foreach (MemberDeclarationSyntax memberDeclarationSyntax in basicsContext.contextTargetNode.Members) {
+                switch (memberDeclarationSyntax) {
+                    case MethodDeclarationSyntax methodDeclarationSyntax:
+                        try {
+                            fill
+                            (
+                                new MethodContext
+                                (
+                                    basicsContext,
+                                    methodDeclarationSyntax.Identifier.ToString(),
+                                    new TypeContext
+                                    (
+                                        methodDeclarationSyntax.ReturnType.ToString(),
+                                        methodDeclarationSyntax.ReturnType
+                                    ),
+                                    methodDeclarationSyntax,
+                                    memberDeclarationSyntax.AttributeLists
+                                )
+                            );
+                        }
+                        catch (Exception e) {
+                            e.PrintExceptionSummaryAndStackTrace();
+                        }
+                        break;
+                }
+            }
+        }
+
+        public abstract void fill(MethodContext methodContext);
+
+    }
+
+    public abstract class MethodAttributeGeneratorComponent<A> : MethodGeneratorComponent where A : MethodAttribute {
+
+        protected virtual A restore(Dictionary<string, string> data) {
+            return (A)Activator.CreateInstance(typeof(A), data);
+        }
+
+        public sealed override void fill(MethodContext methodContext) {
+            List<AttributeSyntax> attributeSyntaxeList = methodContext.attributeListSyntaxes.tryGetSpecifiedAttribute(typeof(A).Name).ToList();
+
+            if (attributeSyntaxeList.Count == 0) {
+                return;
+            }
+
+            IReadOnlyList<AttributeContext<A>> attributeContexts = attributeSyntaxeList.Select
+                (
+                    syntax => {
+                        A attribute = restore
+                        (
+                            syntax.getAttributeArgumentsAsDictionary
+                            (
+                                methodContext.basicsContext.semanticModel
+                            )
+                        );
+                        return new AttributeContext<A>
+                        (
+                            attribute,
+                            syntax
+                        );
+                    }
+                )
+                .Where(a => a != null)
+                .ToList()!;
+
+            try {
+                fill
+                (
+                    new MethodAttributeContext<A>
+                    (
+                        methodContext.basicsContext,
+                        methodContext,
+                        attributeContexts
+                    )
+                );
+            }
+            catch (Exception e) {
+                e.PrintExceptionSummaryAndStackTrace();
+            }
+
+        }
+
+        public abstract void fill(MethodAttributeContext<A> methodAttributeContext);
+
+    }
+
+    public abstract class DistributeMethodAttributeGeneratorComponent<A> : MethodAttributeGeneratorComponent<A> where A : MethodAttribute {
+
+        public override void fill(MethodAttributeContext<A> methodAttributeContext) {
+            foreach (AttributeContext<A> attributeContext in methodAttributeContext.attributeContext) {
+                TypeContext typeContext = new TypeContext(methodAttributeContext.methodContext.returnType);
+                typeContext.receive(attributeContext.attribute);
+                methodAttributeContext.methodContext.returnType = typeContext;
+                try {
+                    fill(methodAttributeContext, attributeContext);
+                }
+                catch (Exception e) {
+                    e.PrintExceptionSummaryAndStackTrace();
+                }
+            }
+        }
+
+        public abstract void fill(MethodAttributeContext<A> methodAttributeContext, AttributeContext<A> attributeContext);
 
     }
 
@@ -210,42 +315,39 @@ namespace Til.Lombok.Generator {
                 return;
             }
 
-            List<A> attributeList = attributeSyntaxeList.Select
+            IReadOnlyList<AttributeContext<A>> attributeContexts = attributeSyntaxeList.Select
                 (
-                    a => restore
-                    (
-                        a.getAttributeArgumentsAsDictionary
+                    syntax => {
+                        A attribute = restore
                         (
-                            basicsContext.semanticModel
-                        )
-                    )
+                            syntax.getAttributeArgumentsAsDictionary
+                            (
+                                basicsContext.semanticModel
+                            )
+                        );
+
+                        return new AttributeContext<A>
+                        (
+                            attribute,
+                            syntax
+                        );
+                    }
                 )
-                .ToList();
+                .Where(a => a != null)
+                .ToList()!;
 
-            for (var i = 0; i < attributeList.Count; i++) {
-
-                AttributeContext<A> attributeContext = new AttributeContext<A>
+            try {
+                fill
                 (
-                    attributeList[i],
-                    attributeSyntaxeList[i],
-                    attributeList,
-                    attributeSyntaxeList
-                );
-
-                try {
-                    fill
+                    new ClassAttributeContext<A>
                     (
-                        new ClassAttributeContext<A>
-                        (
-                            basicsContext,
-                            attributeContext
-                        )
-                    );
-                }
-                catch (Exception e) {
-                    e.PrintExceptionSummaryAndStackTrace();
-                }
-
+                        basicsContext,
+                        attributeContexts
+                    )
+                );
+            }
+            catch (Exception e) {
+                e.PrintExceptionSummaryAndStackTrace();
             }
 
         }
@@ -254,140 +356,22 @@ namespace Til.Lombok.Generator {
 
     }
 
-    public abstract class ClassFieldAttributeGeneratorComponent<FA, CA> : GeneratorComponent where CA : Attribute where FA : Attribute {
+    public abstract class DistributeClassAttributeGeneratorComponent<A> : ClassAttributeGeneratorComponent<A> where A : Attribute {
 
-        protected virtual CA restoreCa(Dictionary<string, string> data) {
-            return (CA)Activator.CreateInstance(typeof(FA), data);
+        protected override void fill(ClassAttributeContext<A> fieldsAttributeContext) {
+            foreach (AttributeContext<A> attributeContext in fieldsAttributeContext.attributeContextList) {
+                fill(fieldsAttributeContext, attributeContext);
+            }
         }
 
-        protected virtual FA restoreFa(Dictionary<string, string> data) {
-            return (FA)Activator.CreateInstance(typeof(FA), data);
-        }
-
-        public override void fill(BasicsContext basicsContext) {
-
-            List<AttributeSyntax> caAttributeSyntax = basicsContext.contextTargetNode.AttributeLists.tryGetSpecifiedAttribute(typeof(CA).Name).ToList();
-            List<CA> caList = caAttributeSyntax.Select(a => restoreCa(a.getAttributeArgumentsAsDictionary(basicsContext.semanticModel))).ToList();
-
-            AttributeContext<CA>? caAttributeContext = null;
-
-            if (caList.Count != 0) {
-                caAttributeContext = new AttributeContext<CA>
-                (
-                    caList.First(),
-                    caAttributeSyntax.First(),
-                    caList,
-                    caAttributeSyntax
-                );
-            }
-
-            List<FieldsAttributeContext<FA>> fieldsAttributeContextList = new List<FieldsAttributeContext<FA>>();
-
-            foreach (MemberDeclarationSyntax member in basicsContext.contextTargetNode.Members) {
-
-                switch (member) {
-                    // 检查成员是否是字段或属性  
-                    case FieldDeclarationSyntax fieldDeclaration: {
-                        List<AttributeSyntax> attributeSyntaxeList = member.AttributeLists.tryGetSpecifiedAttribute(typeof(FA).Name).ToList();
-                        if (attributeSyntaxeList.Count == 0) {
-                            break;
-                        }
-                        List<FA> attributeList = attributeSyntaxeList.Select(a => restoreFa(a.getAttributeArgumentsAsDictionary(basicsContext.semanticModel))).ToList();
-                        foreach (VariableDeclaratorSyntax variableDeclaratorSyntax in fieldDeclaration.Declaration.Variables) {
-
-                            TypeContext typeContext = new TypeContext
-                            (
-                                variableDeclaratorSyntax.Identifier.ToString(),
-                                fieldDeclaration.Declaration.Type.ToString(),
-                                basicsContext.contextTargetNode.getHasGenericName()
-                            );
-                            fieldsAttributeContextList.Add
-                            (
-                                new FieldsAttributeContext<FA>
-                                (
-                                    basicsContext,
-                                    new FieldsContext
-                                    (
-                                        basicsContext,
-                                        typeContext,
-                                        fieldDeclaration.Declaration.Type,
-                                        fieldDeclaration.AttributeLists,
-                                        fieldDeclaration,
-                                        variableDeclaratorSyntax,
-                                        null
-                                    ),
-                                    typeContext,
-                                    new AttributeContext<FA>
-                                    (
-                                        attributeList.First(),
-                                        attributeSyntaxeList.First(),
-                                        attributeList,
-                                        attributeSyntaxeList
-                                    )
-                                )
-                            );
-                        }
-                        break;
-                    }
-                    case PropertyDeclarationSyntax propertyDeclaration: {
-                        List<AttributeSyntax> attributeSyntaxeList = member.AttributeLists.tryGetSpecifiedAttribute(typeof(FA).Name).ToList();
-                        if (attributeSyntaxeList.Count == 0) {
-                            break;
-                        }
-                        List<FA> attributeList = attributeSyntaxeList.Select(a => restoreFa(a.getAttributeArgumentsAsDictionary(basicsContext.semanticModel))).ToList();
-
-                        TypeContext typeContext = new TypeContext
-                        (
-                            propertyDeclaration.Identifier.ToString(),
-                            propertyDeclaration.Type.ToString(),
-                            basicsContext.contextTargetNode.getHasGenericName()
-                        );
-                        fieldsAttributeContextList.Add
-                        (
-                            new FieldsAttributeContext<FA>
-                            (
-                                basicsContext,
-                                new FieldsContext
-                                (
-                                    basicsContext,
-                                    typeContext,
-                                    propertyDeclaration.Type,
-                                    propertyDeclaration.AttributeLists,
-                                    null,
-                                    null,
-                                    propertyDeclaration
-                                ),
-                                typeContext,
-                                new AttributeContext<FA>
-                                (
-                                    attributeList.First(),
-                                    attributeSyntaxeList.First(),
-                                    attributeList,
-                                    attributeSyntaxeList
-                                )
-                            )
-                        );
-                        break;
-                    }
-                }
-            }
-
-            if (fieldsAttributeContextList.Count == 0) {
-                return;
-            }
-
-            fill(new ClassFieldAttributeContext<FA, CA>(basicsContext, caAttributeContext, fieldsAttributeContextList));
-
-        }
-
-        public abstract void fill(ClassFieldAttributeContext<FA, CA> context);
+        protected abstract void fill(ClassAttributeContext<A> fieldsAttributeContext, AttributeContext<A> attributeContext);
 
     }
 
     [GeneratorComponent]
-    public class GetGenerator : FieldsAttributeGeneratorComponent<GetAttribute> {
+    public class GetGenerator : DistributeFieldsAttributeGeneratorComponent<GetAttribute> {
 
-        protected sealed override void fill(FieldsAttributeContext<GetAttribute> fieldsAttributeContext) {
+        protected sealed override void fill(FieldsAttributeContext<GetAttribute> fieldsAttributeContext, AttributeContext<GetAttribute> attributeContext) {
 
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
@@ -395,9 +379,9 @@ namespace Til.Lombok.Generator {
                     (
                         IdentifierName
                         (
-                            fieldsAttributeContext.typeContext.typeName
+                            fieldsAttributeContext.fieldsContext.typeContext.typeName
                         ),
-                        "get" + fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()
+                        "get" + fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()
                     )
                     .AddBodyStatements
                     (
@@ -409,21 +393,21 @@ namespace Til.Lombok.Generator {
                                 ThisExpression(),
                                 IdentifierName
                                 (
-                                    fieldsAttributeContext.typeContext.fieldName
+                                    fieldsAttributeContext.fieldsContext.fieldName
                                 )
                             )
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class OpenGenerator : FieldsAttributeGeneratorComponent<OpenAttribute> {
+    public sealed class OpenGenerator : DistributeFieldsAttributeGeneratorComponent<OpenAttribute> {
 
-        protected override void fill(FieldsAttributeContext<OpenAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<OpenAttribute> fieldsAttributeContext, AttributeContext<OpenAttribute> attributeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
@@ -432,7 +416,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        "open" + fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()
+                        "open" + fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()
                     )
                     .AddParameterListParameters
                     (
@@ -447,7 +431,7 @@ namespace Til.Lombok.Generator {
                             (
                                 ParseTypeName
                                 (
-                                    $"Action<{fieldsAttributeContext.typeContext.typeName}>"
+                                    $"Action<{fieldsAttributeContext.fieldsContext.typeContext.typeName}>"
                                 )
                             )
                     )
@@ -481,7 +465,7 @@ namespace Til.Lombok.Generator {
                                                 ThisExpression(),
                                                 IdentifierName
                                                 (
-                                                    fieldsAttributeContext.typeContext.fieldName
+                                                    fieldsAttributeContext.fieldsContext.fieldName
                                                 )
                                             )
                                         )
@@ -490,16 +474,16 @@ namespace Til.Lombok.Generator {
                             )
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class SetGenerator : FieldsAttributeGeneratorComponent<SetAttribute> {
+    public sealed class SetGenerator : DistributeFieldsAttributeGeneratorComponent<SetAttribute> {
 
-        protected override void fill(FieldsAttributeContext<SetAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<SetAttribute> fieldsAttributeContext, AttributeContext<SetAttribute> attributeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
@@ -508,7 +492,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        "set" + fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()
+                        "set" + fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()
                     )
                     .AddParameterListParameters
                     (
@@ -516,7 +500,7 @@ namespace Til.Lombok.Generator {
                             (
                                 Identifier
                                 (
-                                    fieldsAttributeContext.typeContext.fieldName
+                                    fieldsAttributeContext.fieldsContext.fieldName
                                         .toCamelCaseIdentifier()
                                         .genericEliminate()
                                 )
@@ -525,7 +509,7 @@ namespace Til.Lombok.Generator {
                             (
                                 ParseTypeName
                                 (
-                                    fieldsAttributeContext.typeContext.typeName
+                                    fieldsAttributeContext.fieldsContext.typeContext.typeName
                                 )
                             )
                     )
@@ -542,28 +526,28 @@ namespace Til.Lombok.Generator {
                                     ThisExpression(),
                                     IdentifierName
                                     (
-                                        fieldsAttributeContext.typeContext.fieldName
+                                        fieldsAttributeContext.fieldsContext.fieldName
                                     )
                                 ),
                                 IdentifierName
                                 (
-                                    fieldsAttributeContext.typeContext.fieldName
+                                    fieldsAttributeContext.fieldsContext.fieldName
                                         .toCamelCaseIdentifier()
                                         .genericEliminate()
                                 )
                             )
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class CountGenerator : FieldsAttributeGeneratorComponent<CountAttribute> {
+    public sealed class CountGenerator : DistributeFieldsAttributeGeneratorComponent<CountAttribute> {
 
-        protected override void fill(FieldsAttributeContext<CountAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<CountAttribute> fieldsAttributeContext, AttributeContext<CountAttribute> attributeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
@@ -572,34 +556,34 @@ namespace Til.Lombok.Generator {
                         (
                             "int"
                         ),
-                        $"countIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
+                        $"countIn{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddBodyStatements
                     (
                         ReturnStatement
                         (
-                            IdentifierName($"this.{fieldsAttributeContext.typeContext.fieldName}.Count")
+                            IdentifierName($"this.{fieldsAttributeContext.fieldsContext.fieldName}.Count")
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class IndexGenerator : FieldsAttributeGeneratorComponent<IndexAttribute> {
+    public sealed class IndexGenerator : ListDistributeFieldsAttributeGeneratorComponent<IndexAttribute> {
 
-        protected override void fill(FieldsAttributeContext<IndexAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<IndexAttribute> fieldsAttributeContext, AttributeContext<IndexAttribute> attributeContext, ListTypeContext listTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
                         IdentifierName
                         (
-                            fieldsAttributeContext.typeContext.listCellType
+                            listTypeContext.listTypeName
                         ),
-                        $"indexIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
+                        $"indexIn{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -626,7 +610,7 @@ namespace Til.Lombok.Generator {
                             ( // 创建一个数组或列表的索引访问表达式  
                                 IdentifierName
                                 (
-                                    fieldsAttributeContext.typeContext.fieldName
+                                    fieldsAttributeContext.fieldsContext.fieldName
                                 ),
                                 BracketedArgumentList
                                 ( // 索引参数列表  
@@ -644,16 +628,16 @@ namespace Til.Lombok.Generator {
                             )
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class AddGenerator : FieldsAttributeGeneratorComponent<AddAttribute> {
+    public sealed class AddGenerator : ListDistributeFieldsAttributeGeneratorComponent<AddAttribute> {
 
-        protected override void fill(FieldsAttributeContext<AddAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<AddAttribute> fieldsAttributeContext, AttributeContext<AddAttribute> attributeContext, ListTypeContext listTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
@@ -662,7 +646,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        $"addIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier().genericEliminate()}"
+                        $"addIn{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier().genericEliminate()}"
                     )
                     .AddParameterListParameters
                     (
@@ -671,7 +655,7 @@ namespace Til.Lombok.Generator {
                                 Identifier
                                 (
                                     "a"
-                                    + fieldsAttributeContext.typeContext.listCellType
+                                    + listTypeContext.listTypeName
                                         .toPascalCaseIdentifier()
                                         .genericEliminate()
                                 )
@@ -680,7 +664,7 @@ namespace Til.Lombok.Generator {
                             (
                                 ParseTypeName
                                 (
-                                    fieldsAttributeContext.typeContext.listCellType
+                                    listTypeContext.listTypeName
                                 )
                             )
                     )
@@ -699,7 +683,7 @@ namespace Til.Lombok.Generator {
                                         ThisExpression(),
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         )
                                     ),
                                     IdentifierName
@@ -716,7 +700,7 @@ namespace Til.Lombok.Generator {
                                             IdentifierName
                                             (
                                                 "a"
-                                                + fieldsAttributeContext.typeContext.listCellType
+                                                + listTypeContext.listTypeName
                                                     .toPascalCaseIdentifier()
                                                     .genericEliminate()
                                             ) // 引用参数i  
@@ -726,16 +710,16 @@ namespace Til.Lombok.Generator {
                             )
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class RemoveGenerator : FieldsAttributeGeneratorComponent<RemoveAttribute> {
+    public sealed class RemoveGenerator : ListDistributeFieldsAttributeGeneratorComponent<RemoveAttribute> {
 
-        protected override void fill(FieldsAttributeContext<RemoveAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<RemoveAttribute> fieldsAttributeContext, AttributeContext<RemoveAttribute> attributeContext, ListTypeContext listTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
@@ -744,7 +728,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        $"removeIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
+                        $"removeIn{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -753,7 +737,7 @@ namespace Til.Lombok.Generator {
                                 Identifier
                                 (
                                     "a"
-                                    + fieldsAttributeContext.typeContext.listCellType
+                                    + listTypeContext.listTypeName
                                         .toPascalCaseIdentifier()
                                         .genericEliminate()
                                 )
@@ -762,7 +746,7 @@ namespace Til.Lombok.Generator {
                             (
                                 ParseTypeName
                                 (
-                                    fieldsAttributeContext.typeContext.listCellType
+                                    listTypeContext.listTypeName
                                 )
                             )
                     )
@@ -781,7 +765,7 @@ namespace Til.Lombok.Generator {
                                         ThisExpression(),
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         )
                                     ),
                                     IdentifierName
@@ -798,7 +782,7 @@ namespace Til.Lombok.Generator {
                                             IdentifierName
                                             (
                                                 "a"
-                                                + fieldsAttributeContext.typeContext.listCellType
+                                                + listTypeContext.listTypeName
                                                     .toPascalCaseIdentifier()
                                                     .genericEliminate()
                                             ) // 引用参数i  
@@ -808,16 +792,16 @@ namespace Til.Lombok.Generator {
                             )
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class ContainGenerator : FieldsAttributeGeneratorComponent<ContainAttribute> {
+    public sealed class ContainGenerator : ListDistributeFieldsAttributeGeneratorComponent<ContainAttribute> {
 
-        protected override void fill(FieldsAttributeContext<ContainAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<ContainAttribute> fieldsAttributeContext, AttributeContext<ContainAttribute> attributeContext, ListTypeContext listTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
@@ -826,7 +810,7 @@ namespace Til.Lombok.Generator {
                         (
                             "bool"
                         ),
-                        $"containIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
+                        $"containIn{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -835,7 +819,7 @@ namespace Til.Lombok.Generator {
                                 Identifier
                                 (
                                     "a"
-                                    + fieldsAttributeContext.typeContext.listCellType
+                                    + listTypeContext.listTypeName
                                         .toPascalCaseIdentifier()
                                         .genericEliminate()
                                 )
@@ -844,7 +828,7 @@ namespace Til.Lombok.Generator {
                             (
                                 ParseTypeName
                                 (
-                                    fieldsAttributeContext.typeContext.listCellType
+                                    listTypeContext.listTypeName
                                 )
                             )
                     )
@@ -863,7 +847,7 @@ namespace Til.Lombok.Generator {
                                         ThisExpression(),
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         )
                                     ),
                                     IdentifierName
@@ -880,7 +864,7 @@ namespace Til.Lombok.Generator {
                                             IdentifierName
                                             (
                                                 "a"
-                                                + fieldsAttributeContext.typeContext.listCellType
+                                                + listTypeContext.listTypeName
                                                     .toPascalCaseIdentifier()
                                                     .genericEliminate()
                                             )
@@ -890,29 +874,29 @@ namespace Til.Lombok.Generator {
                             )
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class ForGenerator : FieldsAttributeGeneratorComponent<ForAttribute> {
+    public sealed class ForGenerator : ListDistributeFieldsAttributeGeneratorComponent<ForAttribute> {
 
-        protected override void fill(FieldsAttributeContext<ForAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<ForAttribute> fieldsAttributeContext, AttributeContext<ForAttribute> attributeContext, ListTypeContext listTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
                         IdentifierName
                         (
-                            $"System.Collections.Generic.IEnumerable<{fieldsAttributeContext.typeContext.listCellType}>"
+                            $"System.Collections.Generic.IEnumerable<{listTypeContext.listTypeName}>"
                         ),
-                        $"for{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
+                        $"for{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddBodyStatements
                     (
-                        fieldsAttributeContext.attributeContext.firstAttribute.useYield
+                        attributeContext.attribute.useYield
                             ? ForEachStatement
                             (
                                 ParseTypeName
@@ -929,7 +913,7 @@ namespace Til.Lombok.Generator {
                                     ThisExpression(),
                                     IdentifierName
                                     (
-                                        fieldsAttributeContext.typeContext.fieldName
+                                        fieldsAttributeContext.fieldsContext.fieldName
                                     )
                                 ), // 假设 list 是一个字段或属性  
                                 Block
@@ -955,21 +939,21 @@ namespace Til.Lombok.Generator {
                                     ThisExpression(),
                                     IdentifierName
                                     (
-                                        fieldsAttributeContext.typeContext.fieldName
+                                        fieldsAttributeContext.fieldsContext.fieldName
                                     )
                                 )
                             )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class PutGenerator : FieldsAttributeGeneratorComponent<PutAttribute> {
+    public sealed class PutGenerator : MapDistributeFieldsAttributeGeneratorComponent<PutAttribute> {
 
-        protected override void fill(FieldsAttributeContext<PutAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<PutAttribute> fieldsAttributeContext, AttributeContext<PutAttribute> attributeContext, MapTypeContext mapTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
@@ -978,7 +962,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        $"putIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
+                        $"putIn{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -993,7 +977,7 @@ namespace Til.Lombok.Generator {
                             (
                                 ParseTypeName
                                 (
-                                    fieldsAttributeContext.typeContext.keyType
+                                    mapTypeContext.keyTypeName
                                 )
                             ),
                         Parameter
@@ -1007,7 +991,7 @@ namespace Til.Lombok.Generator {
                             (
                                 ParseTypeName
                                 (
-                                    fieldsAttributeContext.typeContext.valueType
+                                    mapTypeContext.valueTypeName
                                 )
                             )
                     )
@@ -1026,7 +1010,7 @@ namespace Til.Lombok.Generator {
                                         ThisExpression(),
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         )
                                     ),
                                     IdentifierName
@@ -1061,7 +1045,7 @@ namespace Til.Lombok.Generator {
                                         ( // 创建一个数组或列表的索引访问表达式  
                                             IdentifierName
                                             (
-                                                fieldsAttributeContext.typeContext.fieldName
+                                                fieldsAttributeContext.fieldsContext.fieldName
                                             ),
                                             BracketedArgumentList
                                             ( // 索引参数列表  
@@ -1101,7 +1085,7 @@ namespace Til.Lombok.Generator {
                                                     ThisExpression(),
                                                     IdentifierName
                                                     (
-                                                        fieldsAttributeContext.typeContext.fieldName
+                                                        fieldsAttributeContext.fieldsContext.fieldName
                                                     )
                                                 ),
                                                 IdentifierName
@@ -1137,25 +1121,25 @@ namespace Til.Lombok.Generator {
                             )
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class MapGetGenerator : FieldsAttributeGeneratorComponent<MapGetAttribute> {
+    public sealed class MapGetGenerator : MapDistributeFieldsAttributeGeneratorComponent<MapGetAttribute> {
 
-        protected override void fill(FieldsAttributeContext<MapGetAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<MapGetAttribute> fieldsAttributeContext, AttributeContext<MapGetAttribute> attributeContext, MapTypeContext mapTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
                         IdentifierName
                         (
-                            fieldsAttributeContext.typeContext.valueType
+                            mapTypeContext.valueTypeName
                         ),
-                        $"getIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
+                        $"getIn{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -1170,7 +1154,7 @@ namespace Til.Lombok.Generator {
                             (
                                 ParseTypeName
                                 (
-                                    fieldsAttributeContext.typeContext.keyType
+                                    mapTypeContext.keyTypeName
                                 )
                             )
                     )
@@ -1189,7 +1173,7 @@ namespace Til.Lombok.Generator {
                                         ThisExpression(),
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         )
                                     ),
                                     IdentifierName
@@ -1221,7 +1205,7 @@ namespace Til.Lombok.Generator {
                                     (
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         ),
                                         BracketedArgumentList
                                         (
@@ -1254,16 +1238,16 @@ namespace Til.Lombok.Generator {
                             )
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class RemoveKeyGenerator : FieldsAttributeGeneratorComponent<RemoveKeyAttribute> {
+    public sealed class RemoveKeyGenerator : MapDistributeFieldsAttributeGeneratorComponent<RemoveKeyAttribute> {
 
-        protected override void fill(FieldsAttributeContext<RemoveKeyAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<RemoveKeyAttribute> fieldsAttributeContext, AttributeContext<RemoveKeyAttribute> attributeContext, MapTypeContext mapTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
@@ -1272,7 +1256,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        $"removeKeyIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
+                        $"removeKeyIn{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -1287,7 +1271,7 @@ namespace Til.Lombok.Generator {
                             (
                                 ParseTypeName
                                 (
-                                    fieldsAttributeContext.typeContext.keyType
+                                    mapTypeContext.keyTypeName
                                 )
                             )
                     )
@@ -1306,7 +1290,7 @@ namespace Til.Lombok.Generator {
                                         ThisExpression(),
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         )
                                     ),
                                     IdentifierName
@@ -1332,16 +1316,16 @@ namespace Til.Lombok.Generator {
                             )
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class RemoveValueGenerator : FieldsAttributeGeneratorComponent<RemoveValueAttribute> {
+    public sealed class RemoveValueGenerator : MapDistributeFieldsAttributeGeneratorComponent<RemoveValueAttribute> {
 
-        protected override void fill(FieldsAttributeContext<RemoveValueAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<RemoveValueAttribute> fieldsAttributeContext, AttributeContext<RemoveValueAttribute> attributeContext, MapTypeContext mapTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
@@ -1350,7 +1334,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        $"removeValueIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
+                        $"removeValueIn{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -1365,7 +1349,7 @@ namespace Til.Lombok.Generator {
                             (
                                 ParseTypeName
                                 (
-                                    fieldsAttributeContext.typeContext.keyType
+                                    mapTypeContext.keyTypeName
                                 )
                             )
                     )
@@ -1384,7 +1368,7 @@ namespace Til.Lombok.Generator {
                                         ThisExpression(),
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         )
                                     ),
                                     IdentifierName
@@ -1410,16 +1394,16 @@ namespace Til.Lombok.Generator {
                             )
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class ContainKeyGenerator : FieldsAttributeGeneratorComponent<ContainKeyAttribute> {
+    public sealed class ContainKeyGenerator : MapDistributeFieldsAttributeGeneratorComponent<ContainKeyAttribute> {
 
-        protected override void fill(FieldsAttributeContext<ContainKeyAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<ContainKeyAttribute> fieldsAttributeContext, AttributeContext<ContainKeyAttribute> attributeContext, MapTypeContext mapTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
@@ -1428,7 +1412,7 @@ namespace Til.Lombok.Generator {
                         (
                             "bool"
                         ),
-                        $"containKeyIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
+                        $"containKeyIn{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -1443,7 +1427,7 @@ namespace Til.Lombok.Generator {
                             (
                                 ParseTypeName
                                 (
-                                    fieldsAttributeContext.typeContext.valueType
+                                    mapTypeContext.valueTypeName
                                 )
                             )
                     )
@@ -1462,7 +1446,7 @@ namespace Til.Lombok.Generator {
                                         ThisExpression(),
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         )
                                     ),
                                     IdentifierName
@@ -1488,16 +1472,16 @@ namespace Til.Lombok.Generator {
                             )
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class ContainValueGenerator : FieldsAttributeGeneratorComponent<ContainValueAttribute> {
+    public sealed class ContainValueGenerator : MapDistributeFieldsAttributeGeneratorComponent<ContainValueAttribute> {
 
-        protected override void fill(FieldsAttributeContext<ContainValueAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<ContainValueAttribute> fieldsAttributeContext, AttributeContext<ContainValueAttribute> attributeContext, MapTypeContext mapTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
@@ -1506,7 +1490,7 @@ namespace Til.Lombok.Generator {
                         (
                             "bool"
                         ),
-                        $"containValueIn{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
+                        $"containValueIn{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddParameterListParameters
                     (
@@ -1521,7 +1505,7 @@ namespace Til.Lombok.Generator {
                             (
                                 ParseTypeName
                                 (
-                                    fieldsAttributeContext.typeContext.valueType
+                                    mapTypeContext.valueTypeName
                                 )
                             )
                     )
@@ -1540,7 +1524,7 @@ namespace Til.Lombok.Generator {
                                         ThisExpression(),
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         )
                                     ),
                                     IdentifierName
@@ -1566,29 +1550,29 @@ namespace Til.Lombok.Generator {
                             )
                         )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class ForKeyGenerator : FieldsAttributeGeneratorComponent<ForKeyAttribute> {
+    public sealed class ForKeyGenerator : MapDistributeFieldsAttributeGeneratorComponent<ForKeyAttribute> {
 
-        protected override void fill(FieldsAttributeContext<ForKeyAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<ForKeyAttribute> fieldsAttributeContext, AttributeContext<ForKeyAttribute> attributeContext, MapTypeContext mapTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
                         IdentifierName
                         (
-                            $"System.Collections.Generic.IEnumerable<{fieldsAttributeContext.typeContext.keyType}>"
+                            $"System.Collections.Generic.IEnumerable<{mapTypeContext.keyTypeName}>"
                         ),
-                        $"for{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}Key"
+                        $"for{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}Key"
                     )
                     .AddBodyStatements
                     (
-                        fieldsAttributeContext.attributeContext.firstAttribute.useYield
+                        attributeContext.attribute.useYield
                             ? ForEachStatement
                             (
                                 ParseTypeName
@@ -1608,7 +1592,7 @@ namespace Til.Lombok.Generator {
                                         ThisExpression(),
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         )
                                     ),
                                     IdentifierName
@@ -1642,7 +1626,7 @@ namespace Til.Lombok.Generator {
                                         ThisExpression(),
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         )
                                     ),
                                     IdentifierName
@@ -1652,29 +1636,29 @@ namespace Til.Lombok.Generator {
                                 )
                             )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class ForValueGenerator : FieldsAttributeGeneratorComponent<ForValueAttribute> {
+    public sealed class ForValueGenerator : MapDistributeFieldsAttributeGeneratorComponent<ForValueAttribute> {
 
-        protected override void fill(FieldsAttributeContext<ForValueAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<ForValueAttribute> fieldsAttributeContext, AttributeContext<ForValueAttribute> attributeContext, MapTypeContext mapTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
                         IdentifierName
                         (
-                            $"System.Collections.Generic.IEnumerable<{fieldsAttributeContext.typeContext.valueType}>"
+                            $"System.Collections.Generic.IEnumerable<{mapTypeContext.valueTypeName}>"
                         ),
-                        $"for{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}Value"
+                        $"for{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}Value"
                     )
                     .AddBodyStatements
                     (
-                        fieldsAttributeContext.attributeContext.firstAttribute.useYield
+                        attributeContext.attribute.useYield
                             ? ForEachStatement
                             (
                                 ParseTypeName
@@ -1694,7 +1678,7 @@ namespace Til.Lombok.Generator {
                                         ThisExpression(),
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         )
                                     ),
                                     IdentifierName
@@ -1728,7 +1712,7 @@ namespace Til.Lombok.Generator {
                                         ThisExpression(),
                                         IdentifierName
                                         (
-                                            fieldsAttributeContext.typeContext.fieldName
+                                            fieldsAttributeContext.fieldsContext.fieldName
                                         )
                                     ),
                                     IdentifierName
@@ -1738,29 +1722,29 @@ namespace Til.Lombok.Generator {
                                 )
                             )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class ForAllGenerator : FieldsAttributeGeneratorComponent<ForAllAttribute> {
+    public sealed class ForAllGenerator : MapDistributeFieldsAttributeGeneratorComponent<ForAllAttribute> {
 
-        protected override void fill(FieldsAttributeContext<ForAllAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<ForAllAttribute> fieldsAttributeContext, AttributeContext<ForAllAttribute> attributeContext, MapTypeContext mapTypeContext) {
             fieldsAttributeContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
                         IdentifierName
                         (
-                            $"System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<{fieldsAttributeContext.typeContext.keyType}, {fieldsAttributeContext.typeContext.valueType}>>"
+                            $"System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<{mapTypeContext.keyTypeName}, {mapTypeContext.valueTypeName}>>"
                         ),
-                        $"for{fieldsAttributeContext.typeContext.fieldName.toPascalCaseIdentifier()}"
+                        $"for{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}"
                     )
                     .AddBodyStatements
                     (
-                        fieldsAttributeContext.attributeContext.firstAttribute.useYield
+                        attributeContext.attribute.useYield
                             ? ForEachStatement
                             (
                                 ParseTypeName
@@ -1777,7 +1761,7 @@ namespace Til.Lombok.Generator {
                                     ThisExpression(),
                                     IdentifierName
                                     (
-                                        fieldsAttributeContext.typeContext.fieldName
+                                        fieldsAttributeContext.fieldsContext.fieldName
                                     )
                                 ),
                                 Block
@@ -1803,23 +1787,23 @@ namespace Til.Lombok.Generator {
                                     ThisExpression(),
                                     IdentifierName
                                     (
-                                        fieldsAttributeContext.typeContext.fieldName
+                                        fieldsAttributeContext.fieldsContext.fieldName
                                     )
                                 )
                             )
                     )
-                    .applyAll(fieldsAttributeContext)
+                    .applyAll(fieldsAttributeContext, attributeContext)
             );
         }
 
     }
 
     [GeneratorComponent]
-    public sealed class PartialFieldsGenerator : FieldsAttributeGeneratorComponent<IPartialAttribute> {
+    public sealed class PartialFieldsGenerator : DistributeFieldsAttributeGeneratorComponent<IPartialAttribute> {
 
-        protected override void fill(FieldsAttributeContext<IPartialAttribute> fieldsAttributeContext) {
+        protected override void fill(FieldsAttributeContext<IPartialAttribute> fieldsAttributeContext, AttributeContext<IPartialAttribute> attributeContext) {
             BasicsContext basicsContext = fieldsAttributeContext.basicsContext;
-            IPartialAttribute partialAttribute = fieldsAttributeContext.attributeContext.firstAttribute;
+            IPartialAttribute partialAttribute = attributeContext.attribute;
 
             Dictionary<string, string> fillMap = new Dictionary<string, string>();
 
@@ -1841,8 +1825,8 @@ namespace Til.Lombok.Generator {
             fillMap["type"] = typeName;
             fillMap["fullType"] = string.Join(".", quote);
             fillMap["fullType_underline"] = string.Join("_", quote);
-            fillMap["field"] = fieldsAttributeContext.typeContext.fieldName;
-            fillMap["fieldType"] = fieldsAttributeContext.typeContext.typeName;
+            fillMap["field"] = fieldsAttributeContext.fieldsContext.fieldName;
+            fillMap["fieldType"] = fieldsAttributeContext.fieldsContext.typeContext.typeName;
             fillMap["namespace"] = basicsContext.contextNamespaceNameSyntax.ToString();
 
             PartialGenerator.fill(partialAttribute, basicsContext, fillMap);
@@ -1851,11 +1835,11 @@ namespace Til.Lombok.Generator {
     }
 
     [GeneratorComponent]
-    public sealed class PartialGenerator : ClassAttributeGeneratorComponent<IPartialAttribute> {
+    public sealed class PartialGenerator : DistributeClassAttributeGeneratorComponent<IPartialAttribute> {
 
-        protected override void fill(ClassAttributeContext<IPartialAttribute> fieldsAttributeContext) {
+        protected override void fill(ClassAttributeContext<IPartialAttribute> fieldsAttributeContext, AttributeContext<IPartialAttribute> attributeContext) {
             BasicsContext basicsContext = fieldsAttributeContext.basicsContext;
-            IPartialAttribute partialAttribute = fieldsAttributeContext.attributeContext.firstAttribute;
+            IPartialAttribute partialAttribute = attributeContext.attribute;
 
             Dictionary<string, string> fillMap = new Dictionary<string, string>();
 
@@ -1895,23 +1879,23 @@ namespace Til.Lombok.Generator {
             (
                 stringBuilder,
                 k => {
-                    
+
                     string[] ks = k.Split(':');
 
-                    string f = ks.Length > 2
+                    string f = ks.Length < 2
                         ? String.Empty
                         : ks[1];
-                    string value = fillMap[ks [0]];
+                    string value = fillMap[ks[0]];
 
                     switch (f) {
-                        case nameof(StringExtensions.toCamelCaseIdentifier) :
+                        case nameof(StringExtensions.toCamelCaseIdentifier):
                             value = value.toCamelCaseIdentifier();
                             break;
-                        case nameof(StringExtensions.toPascalCaseIdentifier) :
+                        case nameof(StringExtensions.toPascalCaseIdentifier):
                             value = value.toPascalCaseIdentifier();
                             break;
                     }
-                    
+
                     stringBuilder.Append(value);
                 }
             );
@@ -1955,21 +1939,23 @@ namespace Til.Lombok.Generator {
                 ClassDeclarationSyntax classDeclarationSyntax = classDeclarationSyntaxList[index];
 
                 List<MemberDeclarationSyntax> partialClassMemberDeclarationSyntaxList = new List<MemberDeclarationSyntax>();
+                BasicsContext context = new BasicsContext
+                (
+                    classDeclarationSyntax,
+                    basicsContext.contextNamespaceNameSyntax,
+                    basicsContext.semanticModel,
+                    basicsContext.context,
+                    basicsContext.cancellationToken,
+                    partialClassMemberDeclarationSyntaxList,
+                    basicsContext.namespaceMemberDeclarationSyntaxList,
+                    basicsContext.compilationMemberDeclarationSyntaxList
+                ) {
+                    nestContext = nestContext
+                };
                 UnifiedGenerator.generatedPartialClass
                 (
-                    new BasicsContext
-                    (
-                        classDeclarationSyntax,
-                        basicsContext.contextNamespaceNameSyntax,
-                        basicsContext.semanticModel,
-                        basicsContext.context,
-                        basicsContext.cancellationToken,
-                        partialClassMemberDeclarationSyntaxList,
-                        basicsContext.namespaceMemberDeclarationSyntaxList,
-                        basicsContext.compilationMemberDeclarationSyntaxList
-                    ) {
-                        nestContext = nestContext
-                    }
+                    context,
+                    !context.className.Equals(context.className)
                 );
                 classDeclarationSyntax = classDeclarationSyntax.AddMembers(partialClassMemberDeclarationSyntaxList.ToArray());
                 joinMemberDeclarationSyntaxList.Add(classDeclarationSyntax);
@@ -2003,646 +1989,13 @@ namespace Til.Lombok.Generator {
                             basicsContext.compilationMemberDeclarationSyntaxList
                         ) {
                             nestContext = nestContext
-                        }
+                        },
+                        false
                     );
                     joinMemberDeclarationSyntaxList.AddRange(partialClassMemberDeclarationSyntaxList);
                 }
 
             }
-        }
-
-    }
-
-    [GeneratorComponent]
-    public sealed class FreezeGenerator : ClassAttributeGeneratorComponent<IFreezeAttribute> {
-
-        protected override void fill(ClassAttributeContext<IFreezeAttribute> fieldsAttributeContext) {
-
-            Dictionary<string, string> fillMap = new Dictionary<string, string>();
-            fillMap["type"] = fieldsAttributeContext.basicsContext.contextTargetNode.toClassName();
-
-            fillMap["namespace"] = fieldsAttributeContext.basicsContext.contextNamespaceNameSyntax.ToString();
-            string model = @"
-
-public partial class {type} : Til.Lombok.IFreeze {{
-
-    protected System.Collections.Generic.HashSet<string> _frozen = new System.Collections.Generic.HashSet<string>();
-
-    public bool isFrozen(string tag) => _frozen.Contains(tag);
-
-    public void frozen(string tag) => _frozen.Add(tag);
-
-    protected void unFrozen(string tag) => _frozen.Remove(tag);
-
-    public void validateNonFrozen(string tag) {{
-        if (isFrozen(tag)) {{
-            throw new System.InvalidOperationException(""Cannot modify frozen property"");
-        }}
-    }}
-
-}}
-
-";
-
-            StringBuilder stringBuilder = new StringBuilder();
-
-            model.format
-            (
-                stringBuilder,
-                k => stringBuilder.Append
-                (
-                    fillMap[k]
-                )
-            );
-
-            MemberDeclarationSyntax[] memberDeclarationSyntaxes = CSharpSyntaxTree.ParseText(stringBuilder.ToString())
-                .GetRoot()
-                .ChildNodes()
-                .OfType<MemberDeclarationSyntax>()
-                .ToArray();
-
-            if (fieldsAttributeContext.basicsContext.nestContext is not null) {
-                fieldsAttributeContext.basicsContext.nestContext.partialClassMemberDeclarationSyntaxList.AddRange(memberDeclarationSyntaxes);
-            }
-            else {
-                fieldsAttributeContext.basicsContext.namespaceMemberDeclarationSyntaxList.AddRange(memberDeclarationSyntaxes);
-            }
-        }
-
-    }
-
-    [GeneratorComponent]
-    public sealed class ToStringGenerator : ClassFieldAttributeGeneratorComponent<ToStringFieldAttribute, ToStringClassAttribute> {
-
-        public override void fill(ClassFieldAttributeContext<ToStringFieldAttribute, ToStringClassAttribute> context) {
-
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder
-                .Append
-                (
-                    '$'
-                )
-                .Append
-                (
-                    '"'
-                )
-                .Append
-                (
-                    context.basicsContext.contextTargetNode.toClassName()
-                )
-                .Append
-                (
-                    '('
-                )
-                .Append
-                (
-                    string.Join
-                    (
-                        ",",
-                        context.fieldsAttributeContextList.Select
-                        (
-                            s => $"{s.typeContext.fieldName}={{this.{s.typeContext.fieldName}}}"
-                        )
-                    )
-                );
-            if (context.caAttributeContext?.firstAttribute.hasBase ?? false) {
-
-                stringBuilder.Append
-                    (
-                        ','
-                    )
-                    .Append
-                    (
-                        "base={base.ToString()}"
-                    );
-
-            }
-
-            stringBuilder.Append
-                (
-                    ')'
-                )
-                .Append
-                (
-                    '"'
-                );
-
-            context.partialClassMemberDeclarationSyntaxList.Add
-            (
-                MethodDeclaration
-                    (
-                        IdentifierName
-                        (
-                            "string"
-                        ),
-                        "ToString"
-                    )
-                    .AddModifiers
-                    (
-                        Token
-                        (
-                            SyntaxKind.PublicKeyword
-                        ),
-                        Token
-                        (
-                            SyntaxKind.OverrideKeyword
-                        )
-                    )
-                    .WithBody
-                    (
-                        Block
-                        (
-                            ReturnStatement
-                            (
-                                IdentifierName
-                                (
-                                    stringBuilder.ToString()
-                                )
-                            )
-                        )
-                    )
-            );
-
-        }
-
-    }
-
-    [GeneratorComponent]
-    public sealed class EqualsGenerator : ClassFieldAttributeGeneratorComponent<EqualsFieldAttribute, EqualsClassAttribute> {
-
-        public override void fill(ClassFieldAttributeContext<EqualsFieldAttribute, EqualsClassAttribute> context) {
-
-            IsPatternExpressionSyntax isPatternExpressionSyntax = IsPatternExpression
-            (
-                ParseTypeName
-                (
-                    "obj"
-                ),
-                DeclarationPattern
-                (
-                    ParseTypeName
-                    (
-                        context.basicsContext.contextTargetNode.toClassName()
-                    ),
-                    SingleVariableDesignation
-                    (
-                        Identifier
-                        (
-                            "_obj"
-                        )
-                    )
-                )
-            );
-
-            List<InvocationExpressionSyntax> list = new List<InvocationExpressionSyntax>();
-
-            if (context.caAttributeContext?.firstAttribute.hasBase ?? false) {
-                list.Add
-                (
-                    InvocationExpression
-                    (
-                        MemberAccessExpression
-                        (
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName
-                            (
-                                "base"
-                            ),
-                            IdentifierName
-                            (
-                                "Equals"
-                            )
-                        ),
-                        ArgumentList
-                        (
-                            SeparatedList
-                            (
-                                new[] {
-                                    Argument
-                                    (
-                                        IdentifierName
-                                        (
-                                            "_obj"
-                                        )
-                                    )
-                                }
-                            )
-                        )
-                    )
-                );
-            }
-
-            foreach (FieldsAttributeContext<EqualsFieldAttribute>? equal in context.fieldsAttributeContextList) {
-
-                string fieldName = equal.typeContext.fieldName;
-
-                list.Add
-                (
-                    InvocationExpression
-                    (
-                        MemberAccessExpression
-                        (
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName
-                            (
-                                "object"
-                            ),
-                            IdentifierName
-                            (
-                                "Equals"
-                            )
-                        ),
-                        ArgumentList
-                        (
-                            SeparatedList
-                            (
-                                new[] {
-                                    Argument
-                                    (
-                                        IdentifierName
-                                        (
-                                            fieldName
-                                        )
-                                    ),
-                                    Argument
-                                    (
-                                        MemberAccessExpression
-                                        (
-                                            SyntaxKind.SimpleMemberAccessExpression,
-                                            IdentifierName
-                                            (
-                                                "_obj"
-                                            ),
-                                            IdentifierName
-                                            (
-                                                fieldName
-                                            )
-                                        )
-                                    )
-                                }
-                            )
-                        )
-                    )
-                );
-            }
-
-            ExpressionSyntax expression = null!;
-
-            for (var i = 0; i < list.Count; i++) {
-                if (i == 0) {
-                    expression = list[0];
-                    continue;
-                }
-                expression = BinaryExpression
-                (
-                    SyntaxKind.LogicalAndExpression,
-                    expression,
-                    list[i]
-                );
-            }
-
-            context.partialClassMemberDeclarationSyntaxList.Add
-            (
-                MethodDeclaration
-                    (
-                        IdentifierName
-                        (
-                            "bool"
-                        ),
-                        "Equals"
-                    )
-                    .AddModifiers
-                    (
-                        Token
-                        (
-                            SyntaxKind.PublicKeyword
-                        ),
-                        Token
-                        (
-                            SyntaxKind.OverrideKeyword
-                        )
-                    )
-                    .AddParameterListParameters
-                    (
-                        Parameter
-                            (
-                                Identifier
-                                (
-                                    "obj"
-                                )
-                            )
-                            .WithType
-                            (
-                                ParseTypeName
-                                (
-                                    "object"
-                                )
-                            )
-                    )
-                    .AddBodyStatements
-                    (
-                        IfStatement
-                        (
-                            BinaryExpression
-                            (
-                                SyntaxKind.EqualsExpression,
-                                IdentifierName
-                                (
-                                    "obj"
-                                ),
-                                ThisExpression()
-                            ),
-                            Block
-                            (
-                                ReturnStatement
-                                (
-                                    LiteralExpression
-                                    (
-                                        SyntaxKind.TrueLiteralExpression
-                                    )
-                                )
-                            )
-                        ),
-                        IfStatement
-                        (
-                            isPatternExpressionSyntax.WithPattern
-                            (
-                                UnaryPattern
-                                (
-                                    Token
-                                    (
-                                        SyntaxKind.NotKeyword
-                                    ),
-                                    isPatternExpressionSyntax.Pattern
-                                )
-                            ),
-                            Block
-                            (
-                                ReturnStatement
-                                (
-                                    LiteralExpression
-                                    (
-                                        SyntaxKind.FalseLiteralExpression
-                                    )
-                                )
-                            )
-                        ),
-                        ReturnStatement
-                        (
-                            expression
-                        )
-                    )
-            );
-
-        }
-
-    }
-
-    [GeneratorComponent]
-    public sealed class HashCodeGenerator : ClassFieldAttributeGeneratorComponent<HashCodeFieldAttribute, HashCodeClassAttribute> {
-
-        public override void fill(ClassFieldAttributeContext<HashCodeFieldAttribute, HashCodeClassAttribute> context) {
-            List<StatementSyntax> list = new List<StatementSyntax>();
-
-            if (context.caAttributeContext?.firstAttribute.hasBase ?? false) {
-                list.Add
-                (
-                    ExpressionStatement
-                    (
-                        AssignmentExpression
-                        (
-                            SyntaxKind.SimpleAssignmentExpression,
-                            IdentifierName
-                            (
-                                "h"
-                            ),
-                            BinaryExpression
-                            (
-                                SyntaxKind.AddExpression,
-                                BinaryExpression
-                                (
-                                    SyntaxKind.MultiplyExpression,
-                                    IdentifierName
-                                    (
-                                        "h"
-                                    ),
-                                    LiteralExpression
-                                    (
-                                        SyntaxKind.NumericLiteralExpression,
-                                        Literal
-                                        (
-                                            23
-                                        )
-                                    )
-                                ),
-                                InvocationExpression
-                                (
-                                    MemberAccessExpression
-                                    (
-                                        SyntaxKind.SimpleMemberAccessExpression,
-                                        IdentifierName
-                                        (
-                                            "base"
-                                        ),
-                                        IdentifierName
-                                        (
-                                            nameof(GetHashCode)
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                );
-            }
-
-            foreach (FieldsAttributeContext<HashCodeFieldAttribute>? se in context.fieldsAttributeContextList) {
-                bool isValueType = (se.basicsContext.semanticModel.GetSymbolInfo(se.fieldsContext.typeSyntax).Symbol as ITypeSymbol)?.IsValueType ?? false;
-                string fieldName = se.typeContext.fieldName;
-
-                list.Add
-                (
-                    ExpressionStatement
-                    (
-                        AssignmentExpression
-                        (
-                            SyntaxKind.SimpleAssignmentExpression,
-                            IdentifierName
-                            (
-                                "h"
-                            ),
-                            BinaryExpression
-                            (
-                                SyntaxKind.AddExpression,
-                                BinaryExpression
-                                (
-                                    SyntaxKind.MultiplyExpression,
-                                    IdentifierName
-                                    (
-                                        "h"
-                                    ),
-                                    LiteralExpression
-                                    (
-                                        SyntaxKind.NumericLiteralExpression,
-                                        Literal
-                                        (
-                                            23
-                                        )
-                                    )
-                                ),
-                                isValueType
-                                    ? InvocationExpression
-                                    (
-                                        MemberAccessExpression
-                                        (
-                                            SyntaxKind.SimpleMemberAccessExpression,
-                                            MemberAccessExpression
-                                            (
-                                                SyntaxKind.SimpleMemberAccessExpression,
-                                                ThisExpression(),
-                                                IdentifierName
-                                                (
-                                                    fieldName
-                                                )
-                                            ),
-                                            IdentifierName
-                                            (
-                                                nameof(GetHashCode)
-                                            )
-                                        )
-                                    )
-                                    : BinaryExpression
-                                    (
-                                        SyntaxKind.CoalesceExpression,
-                                        ConditionalAccessExpression
-                                        (
-                                            MemberAccessExpression
-                                            (
-                                                SyntaxKind.SimpleMemberAccessExpression,
-                                                ThisExpression(),
-                                                IdentifierName
-                                                (
-                                                    fieldName
-                                                )
-                                            ),
-                                            InvocationExpression
-                                            (
-                                                MemberBindingExpression
-                                                (
-                                                    Token
-                                                    (
-                                                        SyntaxKind.DotToken
-                                                    ),
-                                                    IdentifierName
-                                                    (
-                                                        nameof(GetHashCode)
-                                                    )
-                                                )
-                                            )
-                                        ),
-                                        LiteralExpression
-                                        (
-                                            SyntaxKind.NumericLiteralExpression,
-                                            Literal
-                                            (
-                                                0
-                                            )
-                                        )
-                                    )
-                            )
-                        )
-                    )
-                );
-            }
-
-            list.Add
-            (
-                ReturnStatement
-                (
-                    IdentifierName
-                    (
-                        "h"
-                    )
-                )
-            );
-
-            context.partialClassMemberDeclarationSyntaxList.Add
-            (
-                MethodDeclaration
-                    (
-                        IdentifierName
-                        (
-                            "int"
-                        ),
-                        "GetHashCode"
-                    )
-                    .AddModifiers
-                    (
-                        Token
-                        (
-                            SyntaxKind.PublicKeyword
-                        ),
-                        Token
-                        (
-                            SyntaxKind.OverrideKeyword
-                        )
-                    )
-                    .AddBodyStatements
-                    (
-                        Block
-                        (
-                            CheckedStatement
-                            (
-                                SyntaxKind.UncheckedStatement,
-                                Block()
-                                    .AddStatements
-                                    (
-                                        LocalDeclarationStatement
-                                        (
-                                            VariableDeclaration
-                                            (
-                                                PredefinedType
-                                                (
-                                                    Token
-                                                    (
-                                                        SyntaxKind.IntKeyword
-                                                    )
-                                                ),
-                                                SeparatedList
-                                                (
-                                                    new[] {
-                                                        VariableDeclarator
-                                                        (
-                                                            Identifier
-                                                            (
-                                                                "h"
-                                                            ),
-                                                            null,
-                                                            EqualsValueClause
-                                                            (
-                                                                LiteralExpression
-                                                                (
-                                                                    SyntaxKind.NumericLiteralExpression,
-                                                                    Literal
-                                                                    (
-                                                                        17
-                                                                    )
-                                                                )
-                                                            )
-                                                        )
-                                                    }
-                                                )
-                                            )
-                                        )
-                                    )
-                                    .AddStatements
-                                    (
-                                        list.ToArray()
-                                    )
-                            )
-                        )
-                    )
-            );
         }
 
     }

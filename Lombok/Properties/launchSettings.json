@@ -3,7 +3,7 @@
   "profiles": {
     "Generators": {
       "commandName": "DebugRoslynComponent",
-      "targetProject": "./Test/Lombok.Test.csproj"
+      "targetProject": "../Lombok.Test/Lombok.Test.csproj"
     }
   }
 }

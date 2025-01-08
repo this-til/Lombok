@@ -10,7 +10,7 @@ namespace Til.Lombok {
     }
 
     [AttributeUsage(AttributeTargets.Class)]
-    public class IFreezeAttribute : Attribute {
+    public class IFreezeAttribute : IncrementClassAttribute {
 
         public IFreezeAttribute() {
         }
@@ -112,24 +112,49 @@ namespace Til.Lombok {
             }
         }
 
+        public bool isCustomName() => customPrefix != null || customSuffix != null || customName != null;
+
     }
 
     public class ContainerMetadataAttribute : MetadataAttribute {
-
-        /// <summary>
-        /// 直接的
-        /// </summary>
-        public bool direct;
 
         /// <summary>
         /// 在for中指定是否使用yield
         /// </summary>
         public bool useYield;
 
+        public ContainerMetadataAttribute() {
+        }
+
+        public ContainerMetadataAttribute(Dictionary<string, string> data) : base(data) {
+            // ReSharper disable once InlineOutVariableDeclaration
+            string value;
+
+            if (data.TryGetValue(nameof(this.useYield), out value)) {
+                this.useYield = bool.TryParse(value, out _);
+            }
+
+        }
+
+    }
+
+    public class ListMetadataAttribute : ContainerMetadataAttribute {
+
         /// <summary>
         /// 在list方法中指定泛型类型
         /// </summary>
         public string? listCellType;
+
+        public ListMetadataAttribute() {
+        }
+
+        public ListMetadataAttribute(Dictionary<string, string> data) : base(data) {
+            data.TryGetValue(nameof(listCellType), out listCellType);
+        }
+
+    }
+
+    public class MapMetadataAttribute : ContainerMetadataAttribute {
 
         /// <summary>
         /// 在map方法中指定泛型Key类型
@@ -141,47 +166,12 @@ namespace Til.Lombok {
         /// </summary>
         public string? valueType;
 
-        public ContainerMetadataAttribute() {
-        }
-
-        public ContainerMetadataAttribute(Dictionary<string, string> data) : base(data) {
-            // ReSharper disable once InlineOutVariableDeclaration
-            string value;
-            if (data.TryGetValue(nameof(this.direct), out value)) {
-                this.direct = bool.TryParse(value, out _);
-            }
-            if (data.TryGetValue(nameof(this.useYield), out value)) {
-                this.useYield = bool.TryParse(value, out _);
-            }
-            if (data.TryGetValue(nameof(this.listCellType), out value)) {
-                this.listCellType = value;
-            }
-            if (data.TryGetValue(nameof(this.keyType), out value)) {
-                this.keyType = value;
-            }
-            if (data.TryGetValue(nameof(this.valueType), out value)) {
-                this.valueType = value;
-            }
-        }
-
-    }
-
-    public class ListMetadataAttribute : ContainerMetadataAttribute {
-
-        public ListMetadataAttribute() {
-        }
-
-        public ListMetadataAttribute(Dictionary<string, string> data) : base(data) {
-        }
-
-    }
-
-    public class MapMetadataAttribute : ContainerMetadataAttribute {
-
         public MapMetadataAttribute() {
         }
 
         public MapMetadataAttribute(Dictionary<string, string> data) : base(data) {
+            data.TryGetValue(nameof(keyType), out keyType);
+            data.TryGetValue(nameof(valueType), out valueType);
         }
 
     }
@@ -391,7 +381,7 @@ namespace Til.Lombok {
     }
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
-    public class IPartialAttribute : Attribute {
+    public class IPartialAttribute : MetadataAttribute {
 
         public string? model;
 
@@ -404,7 +394,7 @@ namespace Til.Lombok {
         public IPartialAttribute() {
         }
 
-        public IPartialAttribute(Dictionary<string, string> data) {
+        public IPartialAttribute(Dictionary<string, string> data) : base(data) {
             string value;
             if (data.TryGetValue(nameof(this.model), out value)) {
                 this.model = value;
@@ -432,57 +422,114 @@ namespace Til.Lombok {
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class ToStringFieldAttribute : Attribute {
+    public class FieldAttribute : MetadataAttribute {
+
+        public FieldAttribute() {
+        }
+
+        public FieldAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    public abstract class IncrementFieldAttribute : FieldAttribute {
+
+        public bool directAccess;
+
+        public IncrementFieldAttribute() {
+        }
+
+        public IncrementFieldAttribute(Dictionary<string, string> data) : base(data) {
+            if (data.TryGetValue(nameof(this.directAccess), out string value)) {
+                this.directAccess = bool.TryParse(value, out _);
+            }
+        }
+
+    }
+
+    public class ToStringFieldAttribute : IncrementFieldAttribute {
 
         public ToStringFieldAttribute() {
         }
 
-        public ToStringFieldAttribute(Dictionary<string, string> data) {
+        public ToStringFieldAttribute(Dictionary<string, string> data) : base(data) {
         }
 
     }
 
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class HashCodeFieldAttribute : Attribute {
+    public class HashCodeFieldAttribute : IncrementFieldAttribute {
 
         public HashCodeFieldAttribute() {
         }
 
-        public HashCodeFieldAttribute(Dictionary<string, string> data) {
+        public HashCodeFieldAttribute(Dictionary<string, string> data) : base(data) {
         }
 
     }
 
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class EqualsFieldAttribute : Attribute {
+    public class EqualsFieldAttribute : IncrementFieldAttribute {
 
         public EqualsFieldAttribute() {
         }
 
-        public EqualsFieldAttribute(Dictionary<string, string> data) {
+        public EqualsFieldAttribute(Dictionary<string, string> data) : base(data) {
         }
 
     }
 
-    public abstract class StringClassAttribute : Attribute {
+    [AttributeUsage(AttributeTargets.Method)]
+    public class MethodAttribute : MetadataAttribute {
+
+        public MethodAttribute() {
+        }
+
+        public MethodAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    public class ExtendMethodAttribute : MethodAttribute {
+
+        public string? injectMethod;
+
+        public ExtendMethodAttribute() {
+        }
+
+        public ExtendMethodAttribute(Dictionary<string, string> data) : base(data) {
+            data.TryGetValue(nameof(injectMethod), out injectMethod);
+        }
+
+    }
+
+    [AttributeUsage(AttributeTargets.Class)]
+    public abstract class ClassAttribute : MetadataAttribute {
 
         public bool hasBase;
 
-        public StringClassAttribute() {
+        public ClassAttribute() {
         }
 
-        public StringClassAttribute(Dictionary<string, string> data) {
+        public ClassAttribute(Dictionary<string, string> data) : base(data) {
             string value;
             if (data.TryGetValue(nameof(this.hasBase), out value)) {
                 this.hasBase = bool.TryParse(value, out _);
             }
         }
-        
-        
+
     }
 
     [AttributeUsage(AttributeTargets.Class)]
-    public class ToStringClassAttribute : StringClassAttribute {
+    public abstract class IncrementClassAttribute : ClassAttribute {
+
+        protected IncrementClassAttribute() {
+        }
+
+        protected IncrementClassAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    public class ToStringClassAttribute : IncrementClassAttribute {
 
         public ToStringClassAttribute() {
         }
@@ -492,8 +539,7 @@ namespace Til.Lombok {
 
     }
 
-    [AttributeUsage(AttributeTargets.Class)]
-    public class HashCodeClassAttribute : StringClassAttribute {
+    public class HashCodeClassAttribute : IncrementClassAttribute {
 
         public HashCodeClassAttribute() {
         }
@@ -503,14 +549,17 @@ namespace Til.Lombok {
 
     }
 
-    [AttributeUsage(AttributeTargets.Class)]
-    public class EqualsClassAttribute : StringClassAttribute {
+    public class EqualsClassAttribute : IncrementClassAttribute {
 
         public EqualsClassAttribute() {
         }
 
         public EqualsClassAttribute(Dictionary<string, string> data) : base(data) {
         }
+
+    }
+
+    public class ExtendMethodClassAttribute : ClassAttribute {
 
     }
 

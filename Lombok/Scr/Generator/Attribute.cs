@@ -7,4 +7,9 @@ namespace Til.Lombok.Generator {
 
     }
 
+    [AttributeUsage(AttributeTargets.Class)]
+    public class IncrementComponentAttribute : Attribute {
+
+    }
+
 }

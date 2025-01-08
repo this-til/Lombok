@@ -97,13 +97,6 @@ namespace Til.Lombok.Generator {
 
     public static class SyntaxNodeExtensions {
 
-        public static readonly IDictionary<AccessTypes, SyntaxKind> SyntaxKindsByAccessType = new Dictionary<AccessTypes, SyntaxKind>(4) {
-            [AccessTypes.Private] = SyntaxKind.PrivateKeyword,
-            [AccessTypes.Protected] = SyntaxKind.ProtectedKeyword,
-            [AccessTypes.Internal] = SyntaxKind.InternalKeyword,
-            [AccessTypes.Public] = SyntaxKind.PublicKeyword
-        };
-
         public static readonly SyntaxTriviaList NullableTrivia = TriviaList
         (
             Trivia
@@ -172,20 +165,6 @@ namespace Til.Lombok.Generator {
         }
 
         /// <summary>
-        /// Constructs a new partial type from the original type's name, accessibility and type arguments.
-        /// </summary>
-        /// <param name="typeDeclaration">The type to clone.</param>
-        /// <returns>A new partial type with a few of the original types traits.</returns>
-        public static TypeDeclarationSyntax CreateNewPartialType(this TypeDeclarationSyntax typeDeclaration) {
-            return typeDeclaration switch {
-                ClassDeclarationSyntax => typeDeclaration.CreateNewPartialClass(),
-                StructDeclarationSyntax => typeDeclaration.CreateNewPartialStruct(),
-                InterfaceDeclarationSyntax => typeDeclaration.CreateNewPartialInterface(),
-                _ => typeDeclaration
-            };
-        }
-
-        /// <summary>
         /// Constructs a new partial class from the original type's name, accessibility and type arguments.
         /// </summary>
         /// <param name="type">The type to clone.</param>
@@ -223,111 +202,7 @@ namespace Til.Lombok.Generator {
             return $"{baseTypeDeclarationSyntax.Identifier.Text}<{typeParameterList.Parameters.ToString()}>";
         }
 
-        public static string toFileName(this BaseTypeDeclarationSyntax baseTypeDeclarationSyntax) {
-            if (baseTypeDeclarationSyntax is not TypeDeclarationSyntax typeDeclarationSyntax) {
-                return baseTypeDeclarationSyntax.Identifier.Text;
-            }
-            TypeParameterListSyntax? typeParameterList = typeDeclarationSyntax.TypeParameterList;
-            if (typeParameterList == null) {
-                return baseTypeDeclarationSyntax.Identifier.Text;
-            }
-            return $"{baseTypeDeclarationSyntax.Identifier.Text}<{typeParameterList.Parameters.ToString()}>".Replace("<", "_").Replace(">", "_").Replace(",", "_");
-        }
-
-        /// <summary>
-        /// Constructs a new partial struct from the original type's name, accessibility and type arguments.
-        /// </summary>
-        /// <param name="type">The type to clone.</param>
-        /// <returns>A new partial struct with a few of the original types traits.</returns>
-        public static StructDeclarationSyntax CreateNewPartialStruct(this TypeDeclarationSyntax type) {
-            StructDeclarationSyntax declaration = StructDeclaration(type.Identifier.Text)
-                .WithModifiers
-                (
-                    TokenList
-                    (
-                        Token(type.GetAccessibilityModifier()),
-                        Token(SyntaxKind.PartialKeyword)
-                    )
-                )
-                .WithTypeParameterList(type.TypeParameterList);
-            if (type.ShouldEmitNrtTrivia()) {
-                declaration = declaration.WithLeadingTrivia(NullableTrivia);
-            }
-
-            return declaration;
-        }
-
-        /// <summary>
-        /// Constructs a new partial interface from the original type's name, accessibility and type arguments.
-        /// </summary>
-        /// <param name="type">The type to clone.</param>
-        /// <returns>A new partial interface with a few of the original types traits.</returns>
-        public static InterfaceDeclarationSyntax CreateNewPartialInterface(this TypeDeclarationSyntax type) {
-            InterfaceDeclarationSyntax declaration = InterfaceDeclaration(type.Identifier.Text)
-                .WithModifiers
-                (
-                    TokenList
-                    (
-                        Token(type.GetAccessibilityModifier()),
-                        Token(SyntaxKind.PartialKeyword)
-                    )
-                )
-                .WithTypeParameterList(type.TypeParameterList);
-            if (type.ShouldEmitNrtTrivia()) {
-                declaration = declaration.WithLeadingTrivia(NullableTrivia);
-            }
-
-            return declaration;
-        }
-
-        public static CompilationUnitSyntax CreateNewNamespace(this NameSyntax @namespace, MemberDeclarationSyntax innerMember) {
-            return CreateNewNamespace(@namespace, default, innerMember);
-        }
-
-        public static CompilationUnitSyntax CreateNewNamespace(this NameSyntax @namespace, SyntaxList<UsingDirectiveSyntax> usings, MemberDeclarationSyntax innerMember) {
-            FileScopedNamespaceDeclarationSyntax newNamespace = FileScopedNamespaceDeclaration(@namespace)
-                .WithMembers
-                (
-                    SingletonList(innerMember)
-                );
-            if (usings.Any()) {
-                UsingDirectiveSyntax newUsing = usings[0]
-                    .WithUsingKeyword
-                    (
-                        Token
-                        (
-                            TriviaList
-                            (
-                                AutoGeneratedComment
-                            ),
-                            SyntaxKind.UsingKeyword,
-                            TriviaList()
-                        )
-                    );
-                usings = usings.Replace(usings[0], newUsing);
-            }
-            else {
-                newNamespace = newNamespace.WithNamespaceKeyword
-                (
-                    Token
-                    (
-                        TriviaList
-                        (
-                            AutoGeneratedComment
-                        ),
-                        SyntaxKind.NamespaceKeyword,
-                        TriviaList()
-                    )
-                );
-            }
-
-            return CompilationUnit()
-                .WithUsings(usings)
-                .WithMembers
-                (
-                    SingletonList<MemberDeclarationSyntax>(newNamespace)
-                );
-        }
+        public static string toFileName(this BaseTypeDeclarationSyntax baseTypeDeclarationSyntax) => toClassName(baseTypeDeclarationSyntax).Replace("<", "_").Replace(">", "_").Replace(",", "_");
 
         /// <summary>
         /// Checks if a TypeSyntax represents void.
@@ -369,10 +244,7 @@ namespace Til.Lombok.Generator {
 
                 return false;
             }
-
             if (typeDeclaration.IsNestedType()) {
-                diagnostic = Diagnostic.Create(DiagnosticDescriptors.TypeMustBeNonNested, typeDeclaration.Identifier.GetLocation(), typeDeclaration.Identifier.Text);
-
                 return false;
             }
 
@@ -384,26 +256,6 @@ namespace Til.Lombok.Generator {
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// Removes all the members which do not have the desired access modifier.
-        /// </summary>
-        /// <param name="members">The members to filter</param>
-        /// <param name="accessType">The access modifer to look out for.</param>
-        /// <typeparam name="T">The type of the members (<code>PropertyDeclarationSyntax</code>/<code>FieldDeclarationSyntax</code>).</typeparam>
-        /// <returns>The members which have the desired access modifier.</returns>
-        /// <exception cref="ArgumentOutOfRangeException">If an access modifier is supplied which is not supported.</exception>
-        public static IEnumerable<T> Where<T>(this IEnumerable<T> members, AccessTypes accessType)
-            where T : MemberDeclarationSyntax {
-            Expression<Func<T, bool>> predicateBuilder = PredicateBuilder.False<T>();
-            foreach (AccessTypes t in typeof(AccessTypes).GetEnumValues()) {
-                if (accessType.HasFlag(t)) {
-                    predicateBuilder = predicateBuilder.Or(m => m.Modifiers.Any(SyntaxKindsByAccessType[t]));
-                }
-            }
-
-            return members.Where(predicateBuilder.Compile());
         }
 
         /// <summary>
@@ -502,11 +354,23 @@ namespace Til.Lombok.Generator {
 
             if (attribute.ArgumentList != null) {
                 foreach (AttributeArgumentSyntax argument in attribute.ArgumentList.Arguments) {
-                    string? key = argument.NameEquals?.Name.Identifier.ToString() ?? default;
+                    string? key = argument.NameEquals?.Name.Identifier.ToString() ?? null;
                     if (key is null) {
                         continue;
                     }
-                    string? value = ExtractAttributeValue(argument.Expression, semanticModel);
+
+                    string? value;
+                    try {
+                        value = ExtractAttributeValue(argument.Expression, semanticModel);
+                    }
+                    catch (Exception _) {
+                        value = argument.Expression.ToString();
+                        int breakPoint = value.LastIndexOf('.');
+                        if (breakPoint != -1) {
+                            value = value.Substring(breakPoint + 1, value.Length - breakPoint - 1);
+                        }
+                    }
+
                     if (value is null) {
                         continue;
                     }
@@ -633,19 +497,6 @@ namespace Til.Lombok.Generator {
         );
 
         /// <summary>
-        /// Raised when a type is within another type although it should not be.
-        /// </summary>
-        public static readonly DiagnosticDescriptor TypeMustBeNonNested = new
-        (
-            "LOM002",
-            "Type must be non-nested",
-            "The type '{0}' must be non-nested in order to generate code for it",
-            "Usage",
-            DiagnosticSeverity.Error,
-            true
-        );
-
-        /// <summary>
         /// Raised when a type is not within a namespace although it should be.
         /// </summary>
         public static readonly DiagnosticDescriptor TypeMustHaveNamespace = new
@@ -653,45 +504,6 @@ namespace Til.Lombok.Generator {
             "LOM003",
             "Type must have namespace",
             "The type '{0}' must be in a namespace in order to generate code for it",
-            "Usage",
-            DiagnosticSeverity.Error,
-            true
-        );
-
-        /// <summary>
-        /// Raised when a method is not within a class or a struct although it should be, or if it is a local function.
-        /// </summary>
-        public static readonly DiagnosticDescriptor MethodMustBeInPartialClassOrStruct = new
-        (
-            "LOM004",
-            "Method must be inside partial class or struct",
-            "The method '{0}' must be inside a partial class or a struct and cannot be a local function",
-            "Usage",
-            DiagnosticSeverity.Error,
-            true
-        );
-
-        /// <summary>
-        /// Raised when a field is not within a class or a struct although it should be.
-        /// </summary>
-        public static readonly DiagnosticDescriptor PropertyFieldMustBeInClassOrStruct = new
-        (
-            "LOM005",
-            "Field must be inside class or struct",
-            "The field '{0}' must be inside a class or a struct",
-            "Usage",
-            DiagnosticSeverity.Error,
-            true
-        );
-
-        /// <summary>
-        /// Raised when invalid JSON is encountered.
-        /// </summary>
-        public static readonly DiagnosticDescriptor InvalidJson = new
-        (
-            "LOM006",
-            "Invalid JSON",
-            "Unable to generate code, since the JSON input is invalid.",
             "Usage",
             DiagnosticSeverity.Error,
             true
@@ -709,57 +521,6 @@ namespace Til.Lombok.Generator {
             DiagnosticSeverity.Error,
             true
         );
-
-    }
-
-    /// <summary>
-    /// Builds a predicate by chaining multiple conditions.
-    /// </summary>
-    internal static class PredicateBuilder {
-
-        /// <summary>
-        /// Returns an expression which is always true.
-        /// </summary>
-        /// <typeparam name="T">The type this predicate targets.</typeparam>
-        /// <returns>An always-true predicate.</returns>
-        public static Expression<Func<T, bool>> True<T>() {
-            return static f => true;
-        }
-
-        /// <summary>
-        /// Returns an expression which is always false.
-        /// </summary>
-        /// <typeparam name="T">The type this predicate targets.</typeparam>
-        /// <returns>An always-false predicate.</returns>
-        public static Expression<Func<T, bool>> False<T>() {
-            return static f => false;
-        }
-
-        /// <summary>
-        /// Adds a new condition to the chain and combines it using an OR expression.
-        /// </summary>
-        /// <param name="expr1">The existing predicate chain.</param>
-        /// <param name="expr2">The predicate to add.</param>
-        /// <typeparam name="T">The type this predicate targets.</typeparam>
-        /// <returns>A new predicate with an additional OR predicate.</returns>
-        public static Expression<Func<T, bool>> Or<T>(this Expression<Func<T, bool>> expr1, Expression<Func<T, bool>> expr2) {
-            InvocationExpression invokedExpr = Expression.Invoke(expr2, expr1.Parameters);
-
-            return Expression.Lambda<Func<T, bool>>(Expression.OrElse(expr1.Body, invokedExpr), expr1.Parameters);
-        }
-
-        /// <summary>
-        /// Adds a new condition to the chain and combines it using an AND expression.
-        /// </summary>
-        /// <param name="expr1">The existing predicate chain.</param>
-        /// <param name="expr2">The predicate to add.</param>
-        /// <typeparam name="T">The type this predicate targets.</typeparam>
-        /// <returns>A new predicate with an additional AND predicate.</returns>
-        public static Expression<Func<T, bool>> And<T>(this Expression<Func<T, bool>> expr1, Expression<Func<T, bool>> expr2) {
-            InvocationExpression invokedExpr = Expression.Invoke(expr2, expr1.Parameters);
-
-            return Expression.Lambda<Func<T, bool>>(Expression.AndAlso(expr1.Body, invokedExpr), expr1.Parameters);
-        }
 
     }
 
@@ -933,7 +694,7 @@ namespace Til.Lombok.Generator {
     public static class Util {
 
         public static void format(this string format, StringBuilder? stringBuilder, Action<string> structure) {
-            if ((format == null) || (structure == null)) {
+            if (format == null || structure == null) {
                 throw new ArgumentNullException
                 (
                     (format == null)
@@ -1036,6 +797,25 @@ namespace Til.Lombok.Generator {
             }
         }
 
+        public static string mackCustomName(string source, string? fillSource, MetadataAttribute metadataAttribute) {
+
+            fillSource ??= source;
+
+            if (metadataAttribute.customName is not null) {
+                return metadataAttribute.customName;
+            }
+
+            if (metadataAttribute.customPrefix is not null) {
+                return metadataAttribute.customPrefix + source.toPascalCaseIdentifier();
+            }
+
+            if (metadataAttribute.customSuffix is not null) {
+                return fillSource + metadataAttribute.customSuffix;
+            }
+
+            return source;
+        }
+
     }
 
     public static class GeneratorUtil {
@@ -1043,14 +823,15 @@ namespace Til.Lombok.Generator {
         public static MethodDeclarationSyntax applyAll<A>
         (
             this MethodDeclarationSyntax methodDeclarationSyntax,
-            FieldsAttributeContext<A> fieldsAttributeContext
+            FieldsAttributeContext<A> fieldsAttributeContext,
+            AttributeContext<A> firstAttribute
         ) where A : MetadataAttribute {
             return methodDeclarationSyntax
-                .applyCustomName(fieldsAttributeContext.attributeContext.firstAttribute, fieldsAttributeContext.typeContext.fieldName)
-                .applyLink(fieldsAttributeContext.attributeContext.firstAttribute, fieldsAttributeContext.typeContext.className)
-                .applyNoNull(fieldsAttributeContext.attributeContext.firstAttribute)
-                .applyFrozen(fieldsAttributeContext.attributeContext.firstAttribute)
-                .applyDeclarationSyntaxes(fieldsAttributeContext.attributeContext.firstAttribute);
+                .applyCustomName(firstAttribute.attribute, fieldsAttributeContext.fieldsContext.fieldName)
+                .applyLink(firstAttribute.attribute, fieldsAttributeContext.basicsContext.className)
+                .applyNoNull(firstAttribute.attribute)
+                .applyFrozen(firstAttribute.attribute)
+                .applyDeclarationSyntaxes(firstAttribute.attribute);
 
         }
 
@@ -1173,29 +954,17 @@ namespace Til.Lombok.Generator {
 
         public static MethodDeclarationSyntax applyCustomName(this MethodDeclarationSyntax methodDeclarationSyntax, MetadataAttribute metadataAttribute, string fieldName) {
 
-            if (metadataAttribute.customName is not null) {
-                return methodDeclarationSyntax.WithIdentifier
-                (
-                    Identifier(metadataAttribute.customName)
-                );
+            if (!metadataAttribute.isCustomName()) {
+                return methodDeclarationSyntax;
             }
 
-            if (metadataAttribute.customPrefix is not null) {
-                methodDeclarationSyntax = methodDeclarationSyntax.WithIdentifier
+            methodDeclarationSyntax = methodDeclarationSyntax.WithIdentifier
+            (
+                Identifier
                 (
-                    Identifier($"{metadataAttribute.customPrefix}{fieldName.toPascalCaseIdentifier()}")
-                );
-            }
-
-            if (metadataAttribute.customSuffix is not null) {
-                methodDeclarationSyntax = methodDeclarationSyntax.WithIdentifier
-                (
-                    Identifier
-                    (
-                        methodDeclarationSyntax.Identifier.Text + metadataAttribute.customSuffix
-                    )
-                );
-            }
+                    Util.mackCustomName(fieldName, methodDeclarationSyntax.Identifier.Text, metadataAttribute)
+                )
+            );
 
             return methodDeclarationSyntax;
 
@@ -1447,6 +1216,82 @@ namespace Til.Lombok.Generator {
                         )
                     )
                 );
+        }
+
+    }
+
+    public partial class CodeBuilder {
+
+        public readonly StringBuilder stringBuilder;
+
+        public int indentation;
+
+        protected bool start;
+
+        public CodeBuilder(StringBuilder stringBuilder) {
+            this.stringBuilder = stringBuilder;
+        }
+
+
+        public void append(string s) {
+            if (start) {
+                start = false;
+                for (int i = 0; i < indentation; i++) {
+                    stringBuilder.Append("    ");
+                }
+            }
+            stringBuilder.Append(s);
+        }
+
+        public IDisposable appendBracket(string s) {
+            append(s);
+            return appendBracket();
+        }
+
+        public IDisposable appendBracket() {
+            stringBuilder.Append('(');
+            return new CodeBuilderDisposable(() => append(")"));
+        }
+
+        public void appendLine(string s) {
+            append(s);
+            stringBuilder.Append('\n');
+            start = true;
+        }
+
+        public IDisposable appendBlock(string s, bool lineFeed = true) {
+            append(s);
+            return block(lineFeed);
+        }
+
+        public IDisposable block(bool lineFeed = true) {
+            indentation++;
+            stringBuilder.Append(' ').Append('{').Append('\n');
+            start = true;
+            return new CodeBuilderDisposable
+            (
+                () => {
+                    indentation--;
+                    if (lineFeed) {
+                        appendLine("}");
+                    }
+                    else {
+                        append("}");
+                    }
+                }
+            );
+        }
+
+        public class CodeBuilderDisposable : IDisposable {
+
+            public readonly Action dispose;
+
+            public CodeBuilderDisposable(Action dispose) {
+                this.dispose = dispose;
+            }
+
+            public void Dispose() => dispose();
+
         }
 
     }

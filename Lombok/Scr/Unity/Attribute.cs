@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Til.Lombok.Unity {
 
 
-    public class NetworkSerializationClassAttribute : ClassAttribute {
+    public class NetworkSerializationClassAttribute : IncrementClassAttribute {
 
         public NetworkSerializationClassAttribute() {
         }
@@ -15,7 +15,7 @@ namespace Til.Lombok.Unity {
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class NetworkSerializationFieldAttribute : FieldAttribute {
+    public class NetworkSerializationFieldAttribute : IncrementFieldAttribute {
 
         public NetworkSerializationFieldAttribute() {
         }

@@ -1,6 +1,4 @@
-﻿
-using Til.Lombok.Unity;
-
+﻿using Til.Lombok.Unity;
 /*
 namespace Til.Lombok.Test {
 
@@ -10,10 +8,10 @@ namespace Til.Lombok.Test {
 
         [NetworkSerializationField]
         protected double x;
-        
+
         [NetworkSerializationField]
         protected double y;
-        
+
         [NetworkSerializationField]
         protected double z;
 
@@ -21,26 +19,145 @@ namespace Til.Lombok.Test {
 
 }
 */
-
 using System;
 using System.Collections.Generic;
+using Xunit;
+using Xunit.Abstractions;
 
 namespace Til.Lombok.Test {
 
     [ILombok]
-    public partial class CDemo {
+    public partial class V3 {
 
         [Get]
         [Set]
+        [NetworkSerializationField]
+        public double x;
+
+        [Get]
+        [Set]
+        [NetworkSerializationField]
+        public double y;
+
+        [Get]
+        [Set]
+        [NetworkSerializationField]
+        public double z;
+
+    }
+
+    [ILombok]
+    [NetworkSerializationClass(hasBase = true)]
+    public partial class V6 : V3 {
+
+        [Get]
+        [Set]
+        [NetworkSerializationField]
+        public double a;
+
+        [Get]
+        [Set]
+        [NetworkSerializationField]
+        public double b;
+
+        [Get]
+        [Set]
+        [NetworkSerializationField]
+        public double c;
+
+    }
+
+    [ILombok]
+    public partial class A {
+
+        [Get]
+        [Set]
+        [ToStringField]
+        [HashCodeField]
+        [EqualsField]
         public int a;
 
         [Get]
         [Set]
+        [ToStringField]
+        [HashCodeField]
+        [EqualsField]
         public int b;
 
     }
 
     [ILombok]
+    [ToStringClass(hasBase = true)]
+    [HashCodeClass(hasBase = true)]
+    [EqualsClass(hasBase = true)]
+    public partial class B : A {
+
+        [Get]
+        [Set]
+        [ToStringField]
+        [HashCodeField]
+        [EqualsField]
+        public int c;
+
+        [Get]
+        [Set]
+        [ToStringField]
+        [HashCodeField]
+        [EqualsField]
+        public AA a1 = new AA();
+
+        [Get]
+        [Set]
+        [ToStringField]
+        [HashCodeField]
+        [EqualsField]
+        public AA a2 = new AA();
+
+    }
+
+    [ILombok]
+    public partial class AA {
+
+        [Get]
+        [Set]
+        [ToStringField]
+        [HashCodeField]
+        [EqualsField]
+        public int x;
+
+        [Get]
+        [Set]
+        [ToStringField]
+        [HashCodeField]
+        [EqualsField]
+        public int y;
+
+        [Get]
+        [Set]
+        [ToStringField]
+        [HashCodeField]
+        [EqualsField]
+        public int z;
+
+    }
+
+    public class Tast {
+
+        private readonly ITestOutputHelper _testOutputHelper;
+
+        public Tast(ITestOutputHelper testOutputHelper) {
+            _testOutputHelper = testOutputHelper;
+        }
+
+        [Fact]
+        public void tast() {
+            B b = new B();
+            _testOutputHelper.WriteLine(b.ToString());
+        }
+
+    }
+
+    /*[ILombok]
     [IFreeze]
     public partial class Demo {
 
@@ -166,6 +283,6 @@ public static class {type}EEE {{
 
         }
 
-    }
+    }*/
 
 }

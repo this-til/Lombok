@@ -813,7 +813,7 @@ namespace Til.Lombok.Generator {
                 return fillSource + metadataAttribute.customSuffix;
             }
 
-            return source;
+            return fillSource;
         }
 
     }
@@ -1220,7 +1220,7 @@ namespace Til.Lombok.Generator {
 
     }
 
-    public partial class CodeBuilder {
+    public class CodeBuilder {
 
         public readonly StringBuilder stringBuilder;
 
@@ -1231,7 +1231,6 @@ namespace Til.Lombok.Generator {
         public CodeBuilder(StringBuilder stringBuilder) {
             this.stringBuilder = stringBuilder;
         }
-
 
         public void append(string s) {
             if (start) {
@@ -1259,7 +1258,7 @@ namespace Til.Lombok.Generator {
             start = true;
         }
 
-        public IDisposable appendBlock(string s, bool lineFeed = true) {
+        public IDisposable appendBlock(string s = "", bool lineFeed = true) {
             append(s);
             return block(lineFeed);
         }
@@ -1295,5 +1294,6 @@ namespace Til.Lombok.Generator {
         }
 
     }
+    
 
 }

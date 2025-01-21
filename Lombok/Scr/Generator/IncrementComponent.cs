@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Til.Lombok.Generator {
 
@@ -21,10 +23,6 @@ namespace Til.Lombok.Generator {
 
         public sealed override void fill(IncrementContext incrementContext) {
             List<AttributeSyntax> caAttributeSyntax = incrementContext.basicsContext.contextTargetNode.AttributeLists.tryGetSpecifiedAttribute(typeof(CA).Name).ToList();
-
-            if (caAttributeSyntax.Count == 0) {
-                return;
-            }
 
             IReadOnlyList<AttributeContext<CA>> attributeContexts = caAttributeSyntax.Select
                 (
@@ -199,16 +197,33 @@ namespace Til.Lombok.Generator {
                 return;
             }
 
-            foreach (AttributeContext<CA> attributeContext in incrementContext.attributeContextList) {
+            if (enforce() && incrementContext.attributeContextList.Count == 0) {
                 fill
                 (
                     new ClassFieldAttributeIncrementContext<FA, CA>
                     (
                         incrementContext.incrementContext,
-                        attributeContext,
+                        null,
                         fieldsAttributeContextList
                     )
                 );
+            }
+
+            foreach (AttributeContext<CA> attributeContext in incrementContext.attributeContextList) {
+                try {
+                    fill
+                    (
+                        new ClassFieldAttributeIncrementContext<FA, CA>
+                        (
+                            incrementContext.incrementContext,
+                            attributeContext,
+                            fieldsAttributeContextList
+                        )
+                    );
+                }
+                catch (Exception e) {
+                    e.PrintExceptionSummaryAndStackTrace();
+                }
             }
 
         }
@@ -219,7 +234,7 @@ namespace Til.Lombok.Generator {
 
     public abstract class TranslationClassFieldAttributeIncrementComponent<FA, CA> : ClassFieldAttributeIncrementComponent<FA, CA> where FA : IncrementFieldAttribute where CA : IncrementClassAttribute {
 
-        public override void fill(ClassFieldAttributeIncrementContext<FA, CA> classFieldAttributeIncrementContext) {
+        public sealed override void fill(ClassFieldAttributeIncrementContext<FA, CA> classFieldAttributeIncrementContext) {
             List<FieldAttributeIncrementContext<FA>> fieldsAttributeContexts = new List<FieldAttributeIncrementContext<FA>>();
             foreach (FieldsAttributeContext<FA> fieldsAttributeContext in classFieldAttributeIncrementContext.fieldsAttributeContextList) {
                 foreach (AttributeContext<FA> attributeContext in fieldsAttributeContext.attributeContext) {
@@ -228,8 +243,12 @@ namespace Til.Lombok.Generator {
                     Func<string, string> setInvoke = v => fieldsAttributeContext.fieldsContext.fieldName + '=';
 
                     if (!attributeContext.attribute.directAccess) {
-                        getInvoke = "get" + getInvoke.toPascalCaseIdentifier();
-                        setInvoke = v => $"set{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}({v})";
+
+                        getInvoke = Util.mackCustomName(getInvoke, "get" + getInvoke.toPascalCaseIdentifier(), attributeContext.attribute) + "()";
+                        setInvoke = v => attributeContext.attribute.isCustomName()
+                            ? $"{Util.mackCustomName(getInvoke, "set" + getInvoke.toPascalCaseIdentifier(), attributeContext.attribute)}({v})"
+                            : $"set{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier()}({v})";
+
                     }
 
                     TypeContext typeContext = new TypeContext
@@ -247,7 +266,8 @@ namespace Til.Lombok.Generator {
                             getInvoke,
                             setInvoke,
                             typeContext,
-                            attributeContext
+                            attributeContext,
+                            fieldsAttributeContext
                         )
                     );
                 }
@@ -262,7 +282,7 @@ namespace Til.Lombok.Generator {
             );
         }
 
-        public abstract void fill(TranslationClassFieldAttributeIncrementContext<FA, CA> translationClassFieldAttributeIncrementContext);
+        public abstract void fill(TranslationClassFieldAttributeIncrementContext<FA, CA> context);
 
     }
 
@@ -322,141 +342,243 @@ public partial class {type} : Til.Lombok.IFreeze {{
             }
         }
 
+        public override bool enforce() => false;
+
     }
 
+    [IncrementComponent]
     public class ToStringGenerator : TranslationClassFieldAttributeIncrementComponent<ToStringFieldAttribute, ToStringClassAttribute> {
 
-        public override void fill(TranslationClassFieldAttributeIncrementContext<ToStringFieldAttribute, ToStringClassAttribute> translationClassFieldAttributeIncrementContext) {
+        public override void fill(TranslationClassFieldAttributeIncrementContext<ToStringFieldAttribute, ToStringClassAttribute> context) {
             StringBuilder stringBuilder = new StringBuilder();
             CodeBuilder codeBuilder = new CodeBuilder(stringBuilder);
 
-            using (codeBuilder.appendBlock("public static string ToString(string value)")) {
+            /*using (codeBuilder.appendBlock($"public {(context.classFieldAttributeIncrementContext.caAttributeContext?.attribute.hasBase ?? false ? "new" : string.Empty)} string toFieldString(Til.Lombok.ProfundityStringBuilder profundityStringBuilder)")) {
+                for (int index = 0; index < context.fieldsAttributeContextList.Count; index++) {
+                    FieldAttributeIncrementContext<ToStringFieldAttribute> fieldAttributeIncrementContext = context.fieldsAttributeContextList[index];
+                    string fieldName = fieldAttributeIncrementContext.attributeContext.attribute.customName ?? fieldAttributeIncrementContext.fieldsAttributeContext.fieldsContext.fieldName;
+                    codeBuilder.appendLine($"profundityStringBuilder.Append(\"{fieldName}\");");
+                    codeBuilder.appendLine($"profundityStringBuilder.Append(\"=\");");
 
-                
-                
+                    bool isValueType = (context.basicsContext.semanticModel.GetSymbolInfo(fieldAttributeIncrementContext.fieldsAttributeContext.fieldsContext.typeContext.typeSyntax).Symbol as ITypeSymbol)?.IsValueType ?? false;
+
+                    if (isValueType) {
+                        codeBuilder.appendLine($"profundityStringBuilder");
+                    }
+
+                }
+
+
+            }*/
+
+            using (codeBuilder.appendBlock($"public {(context.classFieldAttributeIncrementContext.caAttributeContext?.attribute.hasBase ?? false ? "new" : string.Empty)} string toFieldString()")) {
+                codeBuilder.appendLine("System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder();");
+                for (int index = 0; index < context.fieldsAttributeContextList.Count; index++) {
+                    FieldAttributeIncrementContext<ToStringFieldAttribute> fieldAttributeIncrementContext = context.fieldsAttributeContextList[index];
+                    string fieldName = fieldAttributeIncrementContext.attributeContext.attribute.customName ?? fieldAttributeIncrementContext.fieldsAttributeContext.fieldsContext.fieldName;
+                    codeBuilder.appendLine($"stringBuilder.Append(\"{fieldName}\").Append(\"=\").Append({fieldAttributeIncrementContext.getInvoke}){(index + 1 < context.fieldsAttributeContextList.Count ? ".Append(\"\\n\")" : String.Empty)};");
+                }
+                codeBuilder.appendLine("return stringBuilder.ToString();");
             }
 
+            using (codeBuilder.appendBlock("public override string ToString()")) {
+                codeBuilder.appendLine("System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder();");
+                codeBuilder.appendLine($"stringBuilder.Append(\"{context.basicsContext.className} {{\").Append(\"\\n\");");
+                codeBuilder.appendLine("stringBuilder.Append(\" \").Append(toFieldString().Replace(\"\\n\",\"\\n \")).Append(\"\\n\");");
+                if (context.classFieldAttributeIncrementContext.caAttributeContext?.attribute.hasBase ?? false) {
+                    codeBuilder.appendLine("stringBuilder.Append(\" \").Append(base.toFieldString().Replace(\"\\n\",\"\\n \")).Append(\"\\n\");");
+                }
+                codeBuilder.appendLine("stringBuilder.Append(\"}\");");
+                codeBuilder.appendLine("return stringBuilder.ToString();");
+            }
+
+            MemberDeclarationSyntax[] memberDeclarationSyntaxes = CSharpSyntaxTree.ParseText(stringBuilder.ToString())
+                .GetRoot()
+                .ChildNodes()
+                .OfType<MemberDeclarationSyntax>()
+                .ToArray();
+
+            context.incrementContext.partialClassMemberDeclarationSyntaxList.AddRange(memberDeclarationSyntaxes);
         }
 
     }
 
-}
+    [IncrementComponent]
+    public sealed class HashCodeGenerator : TranslationClassFieldAttributeIncrementComponent<HashCodeFieldAttribute, HashCodeClassAttribute> {
 
-/*
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+        public override void fill(TranslationClassFieldAttributeIncrementContext<HashCodeFieldAttribute, HashCodeClassAttribute> context) {
+            List<StatementSyntax> list = new List<StatementSyntax>();
 
-namespace Til.Lombok.Generator {
-
-    public abstract class ClassMethodAttributeGeneratorComponent<MA, CA> : GeneratorComponent where CA : ClassAttribute where MA : MethodAttribute {
-
-        protected virtual CA restoreCa(Dictionary<string, string> data) {
-            return (CA)Activator.CreateInstance(typeof(CA), data);
-        }
-
-        protected virtual MA restoreMa(Dictionary<string, string> data) {
-            return (MA)Activator.CreateInstance(typeof(MA), data);
-        }
-
-        public override void fill(BasicsContext basicsContext) {
-            List<AttributeSyntax> caAttributeSyntax = basicsContext.contextTargetNode.AttributeLists.tryGetSpecifiedAttribute(typeof(CA).Name).ToList();
-            List<CA> caList = caAttributeSyntax.Select(a => restoreCa(a.getAttributeArgumentsAsDictionary(basicsContext.semanticModel))).ToList();
-
-            AttributeContext<CA>? caAttributeContext = null;
-
-            if (caList.Count != 0) {
-                caAttributeContext = new AttributeContext<CA>
+            if (context.classFieldAttributeIncrementContext.caAttributeContext?.attribute.hasBase ?? false) {
+                list.Add
                 (
-                    caList.First(),
-                    caAttributeSyntax.First(),
-                    caList,
-                    caAttributeSyntax
-                );
-            }
-
-            List<FieldsAttributeContext<MA>> methodAttributeContextList = new List<FieldsAttributeContext<MA>>();
-
-            if (methodAttributeContextList.Count == 0) {
-                return;
-            }
-
-            fill(new ClassFieldAttributeContext<MA, CA>(basicsContext, caAttributeContext, methodAttributeContextList));
-        }
-
-        public abstract void fill(ClassFieldAttributeContext<MA, CA> context);
-
-    }
-
-    [GeneratorComponent]
-    public sealed class ToStringGenerator : ClassFieldAttributeGeneratorComponent<ToStringFieldAttribute, ToStringClassAttribute> {
-
-        public override void fill(ClassFieldAttributeContext<ToStringFieldAttribute, ToStringClassAttribute> context) {
-
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder
-                .Append
-                (
-                    '$'
-                )
-                .Append
-                (
-                    '"'
-                )
-                .Append
-                (
-                    context.basicsContext.contextTargetNode.toClassName()
-                )
-                .Append
-                (
-                    '('
-                )
-                .Append
-                (
-                    string.Join
+                    ExpressionStatement
                     (
-                        ",",
-                        context.fieldsAttributeContextList.Select
+                        AssignmentExpression
                         (
-                            s => $"{s.fieldsContext.fieldName}={{this.{s.fieldsContext.fieldName}}}"
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName
+                            (
+                                "h"
+                            ),
+                            BinaryExpression
+                            (
+                                SyntaxKind.AddExpression,
+                                BinaryExpression
+                                (
+                                    SyntaxKind.MultiplyExpression,
+                                    IdentifierName
+                                    (
+                                        "h"
+                                    ),
+                                    LiteralExpression
+                                    (
+                                        SyntaxKind.NumericLiteralExpression,
+                                        Literal
+                                        (
+                                            23
+                                        )
+                                    )
+                                ),
+                                InvocationExpression
+                                (
+                                    MemberAccessExpression
+                                    (
+                                        SyntaxKind.SimpleMemberAccessExpression,
+                                        IdentifierName
+                                        (
+                                            "base"
+                                        ),
+                                        IdentifierName
+                                        (
+                                            nameof(GetHashCode)
+                                        )
+                                    )
+                                )
+                            )
                         )
                     )
                 );
-            if (context.caAttributeContext?.firstAttribute.hasBase ?? false) {
-
-                stringBuilder.Append
-                    (
-                        ','
-                    )
-                    .Append
-                    (
-                        "base={base.ToString()}"
-                    );
-
             }
 
-            stringBuilder.Append
-                (
-                    ')'
-                )
-                .Append
-                (
-                    '"'
-                );
+            foreach (FieldAttributeIncrementContext<HashCodeFieldAttribute>? se in context.fieldsAttributeContextList) {
+                bool isValueType = (context.basicsContext.semanticModel.GetSymbolInfo(se.fieldsAttributeContext.fieldsContext.typeContext.typeSyntax).Symbol as ITypeSymbol)?.IsValueType ?? false;
 
-            context.partialClassMemberDeclarationSyntaxList.Add
+                list.Add
+                (
+                    ExpressionStatement
+                    (
+                        AssignmentExpression
+                        (
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName
+                            (
+                                "h"
+                            ),
+                            BinaryExpression
+                            (
+                                SyntaxKind.AddExpression,
+                                BinaryExpression
+                                (
+                                    SyntaxKind.MultiplyExpression,
+                                    IdentifierName
+                                    (
+                                        "h"
+                                    ),
+                                    LiteralExpression
+                                    (
+                                        SyntaxKind.NumericLiteralExpression,
+                                        Literal
+                                        (
+                                            23
+                                        )
+                                    )
+                                ),
+                                isValueType
+                                    ? InvocationExpression
+                                    (
+                                        MemberAccessExpression
+                                        (
+                                            SyntaxKind.SimpleMemberAccessExpression,
+                                            MemberAccessExpression
+                                            (
+                                                SyntaxKind.SimpleMemberAccessExpression,
+                                                ThisExpression(),
+                                                IdentifierName
+                                                (
+                                                    se.getInvoke
+                                                )
+                                            ),
+                                            IdentifierName
+                                            (
+                                                nameof(GetHashCode)
+                                            )
+                                        )
+                                    )
+                                    : BinaryExpression
+                                    (
+                                        SyntaxKind.CoalesceExpression,
+                                        ConditionalAccessExpression
+                                        (
+                                            MemberAccessExpression
+                                            (
+                                                SyntaxKind.SimpleMemberAccessExpression,
+                                                ThisExpression(),
+                                                IdentifierName
+                                                (
+                                                    se.getInvoke
+                                                )
+                                            ),
+                                            InvocationExpression
+                                            (
+                                                MemberBindingExpression
+                                                (
+                                                    Token
+                                                    (
+                                                        SyntaxKind.DotToken
+                                                    ),
+                                                    IdentifierName
+                                                    (
+                                                        nameof(GetHashCode)
+                                                    )
+                                                )
+                                            )
+                                        ),
+                                        LiteralExpression
+                                        (
+                                            SyntaxKind.NumericLiteralExpression,
+                                            Literal
+                                            (
+                                                0
+                                            )
+                                        )
+                                    )
+                            )
+                        )
+                    )
+                );
+            }
+
+            list.Add
+            (
+                ReturnStatement
+                (
+                    IdentifierName
+                    (
+                        "h"
+                    )
+                )
+            );
+
+            context.incrementContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
                         IdentifierName
                         (
-                            "string"
+                            "int"
                         ),
-                        "ToString"
+                        "GetHashCode"
                     )
                     .AddModifiers
                     (
@@ -469,29 +591,70 @@ namespace Til.Lombok.Generator {
                             SyntaxKind.OverrideKeyword
                         )
                     )
-                    .WithBody
+                    .AddBodyStatements
                     (
                         Block
                         (
-                            ReturnStatement
+                            CheckedStatement
                             (
-                                IdentifierName
-                                (
-                                    stringBuilder.ToString()
-                                )
+                                SyntaxKind.UncheckedStatement,
+                                Block()
+                                    .AddStatements
+                                    (
+                                        LocalDeclarationStatement
+                                        (
+                                            VariableDeclaration
+                                            (
+                                                PredefinedType
+                                                (
+                                                    Token
+                                                    (
+                                                        SyntaxKind.IntKeyword
+                                                    )
+                                                ),
+                                                SeparatedList
+                                                (
+                                                    new[] {
+                                                        VariableDeclarator
+                                                        (
+                                                            Identifier
+                                                            (
+                                                                "h"
+                                                            ),
+                                                            null,
+                                                            EqualsValueClause
+                                                            (
+                                                                LiteralExpression
+                                                                (
+                                                                    SyntaxKind.NumericLiteralExpression,
+                                                                    Literal
+                                                                    (
+                                                                        17
+                                                                    )
+                                                                )
+                                                            )
+                                                        )
+                                                    }
+                                                )
+                                            )
+                                        )
+                                    )
+                                    .AddStatements
+                                    (
+                                        list.ToArray()
+                                    )
                             )
                         )
                     )
             );
-
         }
 
     }
 
-    [GeneratorComponent]
-    public sealed class EqualsGenerator : ClassFieldAttributeGeneratorComponent<EqualsFieldAttribute, EqualsClassAttribute> {
+    [IncrementComponent]
+    public sealed class EqualsGenerator : TranslationClassFieldAttributeIncrementComponent<EqualsFieldAttribute, EqualsClassAttribute> {
 
-        public override void fill(ClassFieldAttributeContext<EqualsFieldAttribute, EqualsClassAttribute> context) {
+        public override void fill(TranslationClassFieldAttributeIncrementContext<EqualsFieldAttribute, EqualsClassAttribute> context) {
 
             IsPatternExpressionSyntax isPatternExpressionSyntax = IsPatternExpression
             (
@@ -517,7 +680,7 @@ namespace Til.Lombok.Generator {
 
             List<InvocationExpressionSyntax> list = new List<InvocationExpressionSyntax>();
 
-            if (context.caAttributeContext?.firstAttribute.hasBase ?? false) {
+            if (context.classFieldAttributeIncrementContext.caAttributeContext?.attribute.hasBase ?? false) {
                 list.Add
                 (
                     InvocationExpression
@@ -553,9 +716,7 @@ namespace Til.Lombok.Generator {
                 );
             }
 
-            foreach (FieldsAttributeContext<EqualsFieldAttribute>? equal in context.fieldsAttributeContextList) {
-
-                string fieldName = equal.fieldsContext.fieldName;
+            foreach (FieldAttributeIncrementContext<EqualsFieldAttribute>? equal in context.fieldsAttributeContextList) {
 
                 list.Add
                 (
@@ -582,7 +743,7 @@ namespace Til.Lombok.Generator {
                                     (
                                         IdentifierName
                                         (
-                                            fieldName
+                                            equal.getInvoke
                                         )
                                     ),
                                     Argument
@@ -596,7 +757,7 @@ namespace Til.Lombok.Generator {
                                             ),
                                             IdentifierName
                                             (
-                                                fieldName
+                                                equal.getInvoke
                                             )
                                         )
                                     )
@@ -622,7 +783,7 @@ namespace Til.Lombok.Generator {
                 );
             }
 
-            context.partialClassMemberDeclarationSyntaxList.Add
+            context.incrementContext.partialClassMemberDeclarationSyntaxList.Add
             (
                 MethodDeclaration
                     (
@@ -719,254 +880,4 @@ namespace Til.Lombok.Generator {
 
     }
 
-    [GeneratorComponent]
-    public sealed class HashCodeGenerator : ClassFieldAttributeGeneratorComponent<HashCodeFieldAttribute, HashCodeClassAttribute> {
-
-        public override void fill(ClassFieldAttributeContext<HashCodeFieldAttribute, HashCodeClassAttribute> context) {
-            List<StatementSyntax> list = new List<StatementSyntax>();
-
-            if (context.caAttributeContext?.firstAttribute.hasBase ?? false) {
-                list.Add
-                (
-                    ExpressionStatement
-                    (
-                        AssignmentExpression
-                        (
-                            SyntaxKind.SimpleAssignmentExpression,
-                            IdentifierName
-                            (
-                                "h"
-                            ),
-                            BinaryExpression
-                            (
-                                SyntaxKind.AddExpression,
-                                BinaryExpression
-                                (
-                                    SyntaxKind.MultiplyExpression,
-                                    IdentifierName
-                                    (
-                                        "h"
-                                    ),
-                                    LiteralExpression
-                                    (
-                                        SyntaxKind.NumericLiteralExpression,
-                                        Literal
-                                        (
-                                            23
-                                        )
-                                    )
-                                ),
-                                InvocationExpression
-                                (
-                                    MemberAccessExpression
-                                    (
-                                        SyntaxKind.SimpleMemberAccessExpression,
-                                        IdentifierName
-                                        (
-                                            "base"
-                                        ),
-                                        IdentifierName
-                                        (
-                                            nameof(GetHashCode)
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                );
-            }
-
-            foreach (FieldsAttributeContext<HashCodeFieldAttribute>? se in context.fieldsAttributeContextList) {
-                bool isValueType = (se.basicsContext.semanticModel.GetSymbolInfo(se.fieldsContext.typeContext.typeSyntax).Symbol as ITypeSymbol)?.IsValueType ?? false;
-                string fieldName = se.fieldsContext.fieldName;
-
-                list.Add
-                (
-                    ExpressionStatement
-                    (
-                        AssignmentExpression
-                        (
-                            SyntaxKind.SimpleAssignmentExpression,
-                            IdentifierName
-                            (
-                                "h"
-                            ),
-                            BinaryExpression
-                            (
-                                SyntaxKind.AddExpression,
-                                BinaryExpression
-                                (
-                                    SyntaxKind.MultiplyExpression,
-                                    IdentifierName
-                                    (
-                                        "h"
-                                    ),
-                                    LiteralExpression
-                                    (
-                                        SyntaxKind.NumericLiteralExpression,
-                                        Literal
-                                        (
-                                            23
-                                        )
-                                    )
-                                ),
-                                isValueType
-                                    ? InvocationExpression
-                                    (
-                                        MemberAccessExpression
-                                        (
-                                            SyntaxKind.SimpleMemberAccessExpression,
-                                            MemberAccessExpression
-                                            (
-                                                SyntaxKind.SimpleMemberAccessExpression,
-                                                ThisExpression(),
-                                                IdentifierName
-                                                (
-                                                    fieldName
-                                                )
-                                            ),
-                                            IdentifierName
-                                            (
-                                                nameof(GetHashCode)
-                                            )
-                                        )
-                                    )
-                                    : BinaryExpression
-                                    (
-                                        SyntaxKind.CoalesceExpression,
-                                        ConditionalAccessExpression
-                                        (
-                                            MemberAccessExpression
-                                            (
-                                                SyntaxKind.SimpleMemberAccessExpression,
-                                                ThisExpression(),
-                                                IdentifierName
-                                                (
-                                                    fieldName
-                                                )
-                                            ),
-                                            InvocationExpression
-                                            (
-                                                MemberBindingExpression
-                                                (
-                                                    Token
-                                                    (
-                                                        SyntaxKind.DotToken
-                                                    ),
-                                                    IdentifierName
-                                                    (
-                                                        nameof(GetHashCode)
-                                                    )
-                                                )
-                                            )
-                                        ),
-                                        LiteralExpression
-                                        (
-                                            SyntaxKind.NumericLiteralExpression,
-                                            Literal
-                                            (
-                                                0
-                                            )
-                                        )
-                                    )
-                            )
-                        )
-                    )
-                );
-            }
-
-            list.Add
-            (
-                ReturnStatement
-                (
-                    IdentifierName
-                    (
-                        "h"
-                    )
-                )
-            );
-
-            context.partialClassMemberDeclarationSyntaxList.Add
-            (
-                MethodDeclaration
-                    (
-                        IdentifierName
-                        (
-                            "int"
-                        ),
-                        "GetHashCode"
-                    )
-                    .AddModifiers
-                    (
-                        Token
-                        (
-                            SyntaxKind.PublicKeyword
-                        ),
-                        Token
-                        (
-                            SyntaxKind.OverrideKeyword
-                        )
-                    )
-                    .AddBodyStatements
-                    (
-                        Block
-                        (
-                            CheckedStatement
-                            (
-                                SyntaxKind.UncheckedStatement,
-                                Block()
-                                    .AddStatements
-                                    (
-                                        LocalDeclarationStatement
-                                        (
-                                            VariableDeclaration
-                                            (
-                                                PredefinedType
-                                                (
-                                                    Token
-                                                    (
-                                                        SyntaxKind.IntKeyword
-                                                    )
-                                                ),
-                                                SeparatedList
-                                                (
-                                                    new[] {
-                                                        VariableDeclarator
-                                                        (
-                                                            Identifier
-                                                            (
-                                                                "h"
-                                                            ),
-                                                            null,
-                                                            EqualsValueClause
-                                                            (
-                                                                LiteralExpression
-                                                                (
-                                                                    SyntaxKind.NumericLiteralExpression,
-                                                                    Literal
-                                                                    (
-                                                                        17
-                                                                    )
-                                                                )
-                                                            )
-                                                        )
-                                                    }
-                                                )
-                                            )
-                                        )
-                                    )
-                                    .AddStatements
-                                    (
-                                        list.ToArray()
-                                    )
-                            )
-                        )
-                    )
-            );
-        }
-
-    }
-
 }
-*/

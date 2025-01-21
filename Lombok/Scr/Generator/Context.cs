@@ -212,7 +212,7 @@ namespace Til.Lombok.Generator {
 
         public readonly string methodName;
 
-        public  TypeContext returnType;
+        public TypeContext returnType;
 
         public readonly MethodDeclarationSyntax? methodDeclarationSyntax;
 
@@ -312,6 +312,7 @@ namespace Til.Lombok.Generator {
 
     public class FieldAttributeIncrementContext<FA> where FA : IncrementFieldAttribute {
 
+
         public readonly string getInvoke;
 
         public readonly Func<string, string> setInvoke;
@@ -320,17 +321,22 @@ namespace Til.Lombok.Generator {
 
         public readonly AttributeContext<FA> attributeContext;
 
+        public readonly FieldsAttributeContext<FA> fieldsAttributeContext;
+
         public FieldAttributeIncrementContext
         (
             string getInvoke,
             Func<string, string> setInvoke,
             TypeContext typeContext,
-            AttributeContext<FA> attributeContext
+            AttributeContext<FA> attributeContext,
+            FieldsAttributeContext<FA> fieldsAttributeContext
+ 
         ) {
             this.getInvoke = getInvoke;
             this.setInvoke = setInvoke;
             this.typeContext = typeContext;
             this.attributeContext = attributeContext;
+            this.fieldsAttributeContext = fieldsAttributeContext;
         }
 
     }

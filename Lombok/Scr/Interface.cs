@@ -1,8 +1,11 @@
 ﻿using System.Collections.Generic;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Til.Lombok {
 
     public interface IFreeze {
+
         /// <summary>
         /// 判断指定标签的元素是否被冻结
         /// </summary>
@@ -21,6 +24,19 @@ namespace Til.Lombok {
         /// </summary>
         /// <param name="tag"></param>
         public void validateNonFrozen(string tag);
+
     }
-    
+
+    public interface IChangeIdentifier {
+
+        SyntaxToken changeIdentifier(SyntaxToken tag);
+
+    }
+
+    public interface IChangeType {
+
+        public TypeSyntax changeTypeSyntax(TypeSyntax typeSyntax);
+        
+    }
+
 }

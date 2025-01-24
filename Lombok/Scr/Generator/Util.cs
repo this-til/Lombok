@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Transactions;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -343,44 +344,7 @@ namespace Til.Lombok.Generator {
             }
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="attribute"></param>
-        /// <param name="semanticModel"></param>
-        /// <returns></returns>
-        public static Dictionary<string, string> getAttributeArgumentsAsDictionary(this AttributeSyntax attribute, SemanticModel semanticModel) {
-            Dictionary<string, string> dictionary = new Dictionary<string, string>();
-
-            if (attribute.ArgumentList != null) {
-                foreach (AttributeArgumentSyntax argument in attribute.ArgumentList.Arguments) {
-                    string? key = argument.NameEquals?.Name.Identifier.ToString() ?? null;
-                    if (key is null) {
-                        continue;
-                    }
-
-                    string? value;
-                    try {
-                        value = ExtractAttributeValue(argument.Expression, semanticModel);
-                    }
-                    catch (Exception _) {
-                        value = argument.Expression.ToString();
-                        int breakPoint = value.LastIndexOf('.');
-                        if (breakPoint != -1) {
-                            value = value.Substring(breakPoint + 1, value.Length - breakPoint - 1);
-                        }
-                    }
-
-                    if (value is null) {
-                        continue;
-                    }
-                    dictionary.Add(key, value);
-                }
-            }
-
-            return dictionary;
-        }
-
+    
         public static string getHasGenericName(this ClassDeclarationSyntax classDeclarationSyntax) {
             string className = classDeclarationSyntax.Identifier.ValueText;
 
@@ -397,84 +361,7 @@ namespace Til.Lombok.Generator {
             return $"{className}<{genericParameters}>";
         }
 
-        public static string? ExtractAttributeValue(ExpressionSyntax expression, SemanticModel semanticModel) {
-            switch (expression) {
-                // 如果是成员访问表达式（如ConstString.metadata）    
-                case MemberAccessExpressionSyntax memberAccess: {
-                    // 获取成员访问的符号信息    
-                    ISymbol? symbol = semanticModel.GetSymbolInfo(memberAccess).Symbol;
 
-                    // 如果符号是常量，则尝试获取其值    
-                    if (symbol is IFieldSymbol fieldSymbol) {
-                        if (fieldSymbol.ContainingType.TypeKind == TypeKind.Enum) {
-                            return fieldSymbol.Name;
-                        }
-
-                        if (fieldSymbol.HasConstantValue) {
-                            return fieldSymbol.ConstantValue.ToString();
-                        }
-                    }
-                    break;
-                }
-                case LiteralExpressionSyntax literal:
-                    switch (literal.Kind()) {
-                        case SyntaxKind.TrueLiteralExpression:
-                            return "true";
-                        case SyntaxKind.FalseLiteralExpression:
-                            return "false";
-                        case SyntaxKind.NumericLiteralExpression:
-                        case SyntaxKind.StringLiteralExpression:
-                            return literal.Token.Value?.ToString();
-                    }
-                    break;
-                case IdentifierNameSyntax identifierName: {
-                    // 获取nameof表达式指向的符号  
-                    var symbolInfo = semanticModel.GetSymbolInfo(identifierName);
-
-                    // 确保获取到的是有效的本地变量、参数或成员  
-                    if (symbolInfo.Symbol is not null
-                        && symbolInfo.Symbol.Kind == SymbolKind.Local
-                        || symbolInfo.Symbol!.Kind == SymbolKind.Parameter
-                        || symbolInfo.Symbol.Kind == SymbolKind.Property
-                        || symbolInfo.Symbol.Kind == SymbolKind.Field
-                        || symbolInfo.Symbol.Kind == SymbolKind.Method) {
-                        // nameof表达式的结果就是符号的名称  
-                        return symbolInfo.Symbol.Name;
-                    }
-                    break;
-                }
-                case InvocationExpressionSyntax invocationExpressionSyntax: {
-
-                    ExpressionSyntax expressionSyntax = invocationExpressionSyntax.Expression;
-
-                    if (expressionSyntax is not IdentifierNameSyntax identifierNameSyntax) {
-                        break;
-                    }
-                    if (!identifierNameSyntax.Identifier.Text.Equals("nameof")) {
-                        break;
-                    }
-
-                    ArgumentListSyntax argumentListSyntax = invocationExpressionSyntax.ArgumentList;
-
-                    SeparatedSyntaxList<ArgumentSyntax> separatedSyntaxList = argumentListSyntax.Arguments;
-                    if (separatedSyntaxList.Count == 0) {
-                        break;
-                    }
-
-                    ArgumentSyntax separatedSyntax = separatedSyntaxList[0];
-
-                    string s = separatedSyntax.ToString();
-                    int lastIndexOf = s.LastIndexOf('.');
-                    if (lastIndexOf == -1) {
-                        return s;
-                    }
-                    return s.Substring(lastIndexOf + 1);
-
-                }
-            }
-
-            return null;
-        }
 
     }
 
@@ -523,173 +410,7 @@ namespace Til.Lombok.Generator {
         );
 
     }
-
-    internal static class StringExtensions {
-
-        // Taken from https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/
-        private static readonly ISet<string> ReservedKeywords = new HashSet<string> {
-            "abstract",
-            "as",
-            "base",
-            "bool",
-            "break",
-            "byte",
-            "case",
-            "catch",
-            "char",
-            "checked",
-            "class",
-            "const",
-            "continue",
-            "decimal",
-            "default",
-            "delegate",
-            "do",
-            "double",
-            "else",
-            "enum",
-            "event",
-            "explicit",
-            "extern",
-            "false",
-            "finally",
-            "fixed",
-            "float",
-            "for",
-            "foreach",
-            "goto",
-            "if",
-            "implicit",
-            "in",
-            "int",
-            "interface",
-            "internal",
-            "is",
-            "lock",
-            "long",
-            "namespace",
-            "new",
-            "null",
-            "object",
-            "operator",
-            "out",
-            "override",
-            "params",
-            "private",
-            "protected",
-            "public",
-            "readonly",
-            "ref",
-            "return",
-            "sbyte",
-            "sealed",
-            "short",
-            "sizeof",
-            "stackalloc",
-            "static",
-            "string",
-            "struct",
-            "switch",
-            "this",
-            "throw",
-            "true",
-            "try",
-            "typeof",
-            "uint",
-            "ulong",
-            "unchecked",
-            "unsafe",
-            "ushort",
-            "using",
-            "virtual",
-            "void",
-            "volatile",
-            "while"
-        };
-
-        /// <summary>
-        /// Lowercases the first character of a given string.
-        /// </summary>
-        /// <param name="s">The string whose first character to lowercase.</param>
-        /// <returns>The string with its first character lowercased.</returns>
-        public static string Decapitalize(this string? s) {
-            if (s is null || char.IsLower(s[0])) {
-                return s ?? String.Empty;
-            }
-
-            return char.ToLower(s[0]) + s.Substring(1);
-        }
-
-        /// <summary>
-        /// Uppercases the first character of a given string.
-        /// </summary>
-        /// <param name="s">The string whose first character to uppercase.</param>
-        /// <returns>The string with its first character uppercased.</returns>
-        public static string Capitalize(this string? s) {
-            if (s is null || char.IsUpper(s[0])) {
-                return s ?? String.Empty;
-            }
-
-            return char.ToUpper(s[0]) + s.Substring(1);
-        }
-
-        /// <summary>
-        /// Escapes a reserved keyword which should be used as an identifier.
-        /// </summary>
-        /// <param name="identifier">The identifier to be used.</param>
-        /// <returns>A valid identifier.</returns>
-        public static string EscapeReservedKeyword(this string identifier) {
-            if (ReservedKeywords.Contains(identifier)) {
-                return "@" + identifier;
-            }
-
-            return identifier;
-        }
-
-        public static string genericEliminate(this string identifier) {
-            string pattern = @"<[^>]+>"; // 匹配 < 和 > 之间的任何内容（不包括这两个尖括号）  
-            return Regex.Replace(identifier, pattern, "");
-        }
-
-        /// <summary>
-        /// Ensures normal PascalCase for an identifier. (e.g. "_age" becomes "Age").
-        /// </summary>
-        /// <param name="identifier">The identifier to get the property name for.</param>
-        /// <returns>A PascalCase identifier.</returns>
-        public static string toPascalCaseIdentifier(this string identifier) {
-            int tailor = -1;
-            for (var i = 0; i < identifier.Length; i++) {
-                if (identifier[i] != '_') {
-                    break;
-                }
-                tailor = i;
-            }
-            if (tailor != -1) {
-                identifier = identifier.Substring(tailor + 1);
-            }
-            return identifier.Capitalize().Replace('.', '_');
-        }
-
-        /// <summary>
-        /// Transforms an identifier to camelCase. (e.g. "_myAge" -> "myAge", "MyAge" -> "myAge").
-        /// </summary>
-        /// <param name="identifier">The identifier to transform.</param>
-        /// <returns>A camelCase identifier.</returns>
-        public static string toCamelCaseIdentifier(this string identifier) {
-            int tailor = -1;
-            for (var i = 0; i < identifier.Length; i++) {
-                if (identifier[i] != '_') {
-                    break;
-                }
-                tailor = i;
-            }
-            if (tailor != -1) {
-                identifier = identifier.Substring(tailor + 1);
-            }
-            return identifier.Decapitalize().Replace('.', '_');
-        }
-
-    }
+    
 
     public static class Util {
 
@@ -758,8 +479,6 @@ namespace Til.Lombok.Generator {
         private static void ThrowFormatException() {
             throw new FormatException("Input string was not in a correct format.");
         }
-
-        public static O noNullOrDef<O>(this O? o, O def) => o ?? def;
 
         public static void PrintExceptionSummaryAndStackTrace(this Exception ex) {
             // 获取堆栈跟踪的第一帧  
@@ -886,7 +605,7 @@ namespace Til.Lombok.Generator {
                 )
             );
         }
-
+        
         public static MethodDeclarationSyntax applyNoNull(this MethodDeclarationSyntax methodDeclarationSyntax, MetadataAttribute metadataAttribute) {
 
             if (!metadataAttribute.noNull) {
@@ -951,7 +670,7 @@ namespace Til.Lombok.Generator {
             );
 
         }
-
+        
         public static MethodDeclarationSyntax applyCustomName(this MethodDeclarationSyntax methodDeclarationSyntax, MetadataAttribute metadataAttribute, string fieldName) {
 
             if (!metadataAttribute.isCustomName()) {

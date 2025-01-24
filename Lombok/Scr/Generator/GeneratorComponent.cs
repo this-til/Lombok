@@ -502,7 +502,7 @@ namespace Til.Lombok.Generator {
                                 (
                                     fieldsAttributeContext.fieldsContext.fieldName
                                         .toCamelCaseIdentifier()
-                                        .genericEliminate()
+                                        .eliminateGeneric()
                                 )
                             )
                             .WithType
@@ -533,7 +533,7 @@ namespace Til.Lombok.Generator {
                                 (
                                     fieldsAttributeContext.fieldsContext.fieldName
                                         .toCamelCaseIdentifier()
-                                        .genericEliminate()
+                                        .eliminateGeneric()
                                 )
                             )
                         )
@@ -646,7 +646,7 @@ namespace Til.Lombok.Generator {
                         (
                             "void"
                         ),
-                        $"addIn{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier().genericEliminate()}"
+                        $"addIn{fieldsAttributeContext.fieldsContext.fieldName.toPascalCaseIdentifier().eliminateGeneric()}"
                     )
                     .AddParameterListParameters
                     (
@@ -657,7 +657,7 @@ namespace Til.Lombok.Generator {
                                     "a"
                                     + listTypeContext.listTypeName
                                         .toPascalCaseIdentifier()
-                                        .genericEliminate()
+                                        .eliminateGeneric()
                                 )
                             )
                             .WithType
@@ -702,7 +702,7 @@ namespace Til.Lombok.Generator {
                                                 "a"
                                                 + listTypeContext.listTypeName
                                                     .toPascalCaseIdentifier()
-                                                    .genericEliminate()
+                                                    .eliminateGeneric()
                                             ) // 引用参数i  
                                         )
                                     )
@@ -739,7 +739,7 @@ namespace Til.Lombok.Generator {
                                     "a"
                                     + listTypeContext.listTypeName
                                         .toPascalCaseIdentifier()
-                                        .genericEliminate()
+                                        .eliminateGeneric()
                                 )
                             )
                             .WithType
@@ -784,7 +784,7 @@ namespace Til.Lombok.Generator {
                                                 "a"
                                                 + listTypeContext.listTypeName
                                                     .toPascalCaseIdentifier()
-                                                    .genericEliminate()
+                                                    .eliminateGeneric()
                                             ) // 引用参数i  
                                         )
                                     )
@@ -821,7 +821,7 @@ namespace Til.Lombok.Generator {
                                     "a"
                                     + listTypeContext.listTypeName
                                         .toPascalCaseIdentifier()
-                                        .genericEliminate()
+                                        .eliminateGeneric()
                                 )
                             )
                             .WithType
@@ -866,7 +866,7 @@ namespace Til.Lombok.Generator {
                                                 "a"
                                                 + listTypeContext.listTypeName
                                                     .toPascalCaseIdentifier()
-                                                    .genericEliminate()
+                                                    .eliminateGeneric()
                                             )
                                         )
                                     )
@@ -1879,24 +1879,12 @@ namespace Til.Lombok.Generator {
             (
                 stringBuilder,
                 k => {
-
                     string[] ks = k.Split(':');
-
                     string f = ks.Length < 2
                         ? String.Empty
                         : ks[1];
                     string value = fillMap[ks[0]];
-
-                    switch (f) {
-                        case nameof(StringExtensions.toCamelCaseIdentifier):
-                            value = value.toCamelCaseIdentifier();
-                            break;
-                        case nameof(StringExtensions.toPascalCaseIdentifier):
-                            value = value.toPascalCaseIdentifier();
-                            break;
-                    }
-
-                    stringBuilder.Append(value);
+                    stringBuilder.Append(value.format(f));
                 }
             );
 

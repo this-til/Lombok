@@ -880,4 +880,15 @@ public partial class {type} : Til.Lombok.IFreeze {{
 
     }
 
+    [IncrementComponent]
+    public sealed class ExportGenerator : TranslationClassFieldAttributeIncrementComponent<EqualsFieldAttribute, ExportClassAttribute> {
+
+        public override bool onlyOne() => true;
+
+        public override void fill(TranslationClassFieldAttributeIncrementContext<EqualsFieldAttribute, ExportClassAttribute> context) {
+
+        }
+
+    }
+
 }

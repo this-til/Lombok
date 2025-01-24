@@ -1,6 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Til.Lombok.Generator;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
 namespace Til.Lombok {
 
@@ -23,6 +28,38 @@ namespace Til.Lombok {
     public class MetadataAttribute : Attribute {
 
         /// <summary>
+        /// 自定义前缀
+        /// </summary>
+        public string? customPrefix;
+
+        /// <summary>
+        /// 自定义后缀
+        /// </summary>
+        public string? customSuffix;
+
+        /// <summary>
+        /// 自定义名称
+        /// </summary>
+        public string? customName;
+
+        /// <summary>
+        /// 自定义类型
+        /// </summary>
+        public string? customType;
+
+        /*/// <summary>
+        /// 自定义泛型类型
+        /// 以','分隔
+        /// <A,B,C> "int,string,List<string>"
+        /// 如果不希望设置某个位置的泛型请留空 "int,,List<string>"
+        /// </summary>
+        public string? customGenericType;*/
+
+        public string? beforeOperation;
+
+        public string? afterOperation;
+
+        /// <summary>
         /// 在 set 方法中，如果属性被标记为 true，将生成链式调用
         /// </summary>
         public bool link;
@@ -36,28 +73,6 @@ namespace Til.Lombok {
         /// 在 get set 方法中，如果不为空将进行冻结验证，验证不通过将抛出异常
         /// </summary>
         public string? freezeTag;
-
-        /// <summary>
-        /// 自定义前缀
-        /// 默认 get、set 等，根据注解类型设定
-        /// </summary>
-        public string? customPrefix;
-
-        /// <summary>
-        /// 自定义后缀
-        /// 默认为空
-        /// </summary>
-        public string? customSuffix;
-
-        /// <summary>
-        /// 自定义名称
-        /// </summary>
-        public string? customName;
-
-        /// <summary>
-        /// 自定义类型
-        /// </summary>
-        public string? customType;
 
         /// <summary>
         /// 调用更新方法
@@ -101,6 +116,15 @@ namespace Til.Lombok {
             if (data.TryGetValue(nameof(this.customType), out value)) {
                 this.customType = value;
             }
+            /*if (data.TryGetValue(nameof(customGenericType), out value)) {
+                this.customGenericType = value;
+            }*/
+            if (data.TryGetValue(nameof(this.beforeOperation), out value)) {
+                this.beforeOperation = value;
+            }
+            if (data.TryGetValue(nameof(this.afterOperation), out value)) {
+                this.afterOperation = value;
+            }
             if (data.TryGetValue(nameof(this.updateField), out value)) {
                 this.updateField = bool.TryParse(value, out _);
             }
@@ -113,6 +137,69 @@ namespace Til.Lombok {
         }
 
         public bool isCustomName() => customPrefix != null || customSuffix != null || customName != null;
+
+        /*public SyntaxToken changeIdentifier(SyntaxToken tag) {
+            if (customName != null) {
+                return Identifier(customName);
+            }
+            switch (customName, customSuffix) {
+                case (not null, null):
+                    return Identifier($"{customSuffix}{tag.ToString().toPascalCaseIdentifier()}");
+                case (null, not null):
+                    return Identifier($"{tag}{customSuffix}");
+                case (not null, not null):
+                    return Identifier($"{customSuffix}{tag.ToString().toPascalCaseIdentifier()}{customSuffix}");
+                default:
+                    return tag;
+            }
+        }
+
+        public TypeSyntax changeTypeSyntax(TypeSyntax typeSyntax) {
+            if (customType != null) {
+                return ParseTypeName(customType);
+            }
+            if (customGenericType != null) {
+                string[] strings = customGenericType.Split(',');
+                List<TypeSyntax> genericTypeList = new List<TypeSyntax>();
+                if (typeSyntax is GenericNameSyntax genericNameSyntax) {
+                    genericTypeList.AddRange(genericNameSyntax.TypeArgumentList.Arguments);
+                }
+                int max = Math.Max(strings.Length, genericTypeList.Count);
+                for (int i = genericTypeList.Count; i < max; i++) {
+                    genericTypeList.Add(ParseTypeName("object"));
+                }
+                for (var i = 0; i < strings.Length; i++) {
+                    string s = strings[i];
+                    if (string.IsNullOrWhiteSpace(s)) {
+                        continue;
+                    }
+                    genericTypeList[i] = ParseTypeName(s);
+                }
+                return typeSyntax is GenericNameSyntax _genericNameSyntax
+                    ? _genericNameSyntax.WithTypeArgumentList
+                    (
+                        TypeArgumentList
+                        (
+                            SeparatedList
+                            (
+                                genericTypeList
+                            )
+                        )
+                    )
+                    : GenericName
+                    (
+                        Identifier(typeSyntax.ToString().eliminateGeneric()),
+                        TypeArgumentList
+                        (
+                            SeparatedList
+                            (
+                                genericTypeList
+                            )
+                        )
+                    );
+            }
+            return typeSyntax;
+        }*/
 
     }
 
@@ -477,6 +564,16 @@ namespace Til.Lombok {
 
     }
 
+    public class ExportFieldAttribute : IncrementFieldAttribute {
+
+        public ExportFieldAttribute() {
+        }
+
+        public ExportFieldAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
     [AttributeUsage(AttributeTargets.Method)]
     public class MethodAttribute : MetadataAttribute {
 
@@ -555,6 +652,16 @@ namespace Til.Lombok {
         }
 
         public EqualsClassAttribute(Dictionary<string, string> data) : base(data) {
+        }
+
+    }
+
+    public class ExportClassAttribute : IncrementClassAttribute {
+
+        public ExportClassAttribute() {
+        }
+
+        public ExportClassAttribute(Dictionary<string, string> data) : base(data) {
         }
 
     }

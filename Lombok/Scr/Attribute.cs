@@ -55,10 +55,6 @@ namespace Til.Lombok {
         /// </summary>
         public string? customGenericType;*/
 
-        public string? beforeOperation;
-
-        public string? afterOperation;
-
         /// <summary>
         /// 在 set 方法中，如果属性被标记为 true，将生成链式调用
         /// </summary>
@@ -116,15 +112,6 @@ namespace Til.Lombok {
             if (data.TryGetValue(nameof(this.customType), out value)) {
                 this.customType = value;
             }
-            /*if (data.TryGetValue(nameof(customGenericType), out value)) {
-                this.customGenericType = value;
-            }*/
-            if (data.TryGetValue(nameof(this.beforeOperation), out value)) {
-                this.beforeOperation = value;
-            }
-            if (data.TryGetValue(nameof(this.afterOperation), out value)) {
-                this.afterOperation = value;
-            }
             if (data.TryGetValue(nameof(this.updateField), out value)) {
                 this.updateField = bool.TryParse(value, out _);
             }
@@ -166,9 +153,10 @@ namespace Til.Lombok {
                 }
                 int max = Math.Max(strings.Length, genericTypeList.Count);
                 for (int i = genericTypeList.Count; i < max; i++) {
-                    genericTypeList.Add(ParseTypeName("object"));
-                }
                 for (var i = 0; i < strings.Length; i++) {
+                    genericTypeList.Add(ParseTypeName("object"));
+
+                }
                     string s = strings[i];
                     if (string.IsNullOrWhiteSpace(s)) {
                         continue;

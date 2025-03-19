@@ -551,7 +551,6 @@ namespace Til.Lombok.Generator {
                 .applyNoNull(firstAttribute.attribute)
                 .applyFrozen(firstAttribute.attribute)
                 .applyDeclarationSyntaxes(firstAttribute.attribute);
-
         }
 
         public static MethodDeclarationSyntax applyFrozen(this MethodDeclarationSyntax methodDeclarationSyntax, MetadataAttribute metadataAttribute) {

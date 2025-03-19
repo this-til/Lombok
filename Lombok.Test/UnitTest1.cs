@@ -26,7 +26,7 @@ using Xunit.Abstractions;
 
 namespace Til.Lombok.Test {
 
-    /*[ILombok]
+    [ILombok]
     public partial class V3 {
 
         [Get]
@@ -44,7 +44,7 @@ namespace Til.Lombok.Test {
         [NetworkSerializationField]
         public double z;
 
-    }*/
+    }
 
     /*
     [ILombok]
@@ -159,7 +159,7 @@ namespace Til.Lombok.Test {
 
     }
 
-    /*[ILombok]
+    [ILombok]
     [IFreeze]
     public partial class Demo {
 
@@ -285,6 +285,6 @@ public static class {type}EEE {{
 
         }
 
-    }*/
+    }
 
 }

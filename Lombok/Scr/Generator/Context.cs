@@ -169,7 +169,7 @@ namespace Til.Lombok.Generator {
         }
 
         public TypeContext? tryGetGenericTypeContexts(int i) {
-            if (i > 0 && i <= genericTypeContexts.Count) {
+            if (i >= 0 && i <= genericTypeContexts.Count) {
                 return genericTypeContexts[i];
             }
             return null;

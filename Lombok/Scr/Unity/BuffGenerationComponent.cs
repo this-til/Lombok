@@ -26,6 +26,8 @@ namespace Til.Lombok.Unity.Generator {
             StringBuilder stringBuilder = new StringBuilder();
             CodeBuilder codeBuilder = new CodeBuilder(stringBuilder);
 
+            codeBuilder.stringBuilder.AppendLine("#pragma warning disable CS0109 // 成员不会隐藏继承的成员；不需要关键字 new");
+
             using (codeBuilder.appendBlock($"public new static void read(Unity.Netcode.FastBufferReader reader, out {context.basicsContext.className} value)")) {
                 codeBuilder.appendLine("Unity.Netcode.ByteUnpacker.ReadValuePacked(reader, out bool isNull);");
                 using (codeBuilder.appendBlock("if(isNull)")) {
@@ -87,6 +89,7 @@ namespace Til.Lombok.Unity.Generator {
                     codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, true);");
                     codeBuilder.appendLine("return;");
                 }
+                codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, false);");
                 codeBuilder.appendLine($"writeField(writer, value);");
                 if (baseTypeName is not null) {
                     codeBuilder.appendLine($"{baseTypeName}.writeField(writer, value);");
@@ -140,7 +143,7 @@ namespace Til.Lombok.Unity.Generator {
 
                 for (int index = 0; index < context.fieldsAttributeContextList.Count; index++) {
                     FieldAttributeIncrementContext<NetworkSerializationFieldAttribute> fieldAttributeIncrementContext = context.fieldsAttributeContextList[index];
-                    using (codeBuilder.appendBlock("if ((tag & (1 << 0)) != 0)")) {
+                    using (codeBuilder.appendBlock($"if ((tag & (1 << {index})) != 0)")) {
                         codeBuilder.appendLine($"{fieldAttributeIncrementContext.typeContext.typeName} a = previousValue.{fieldAttributeIncrementContext.getInvoke};");
                         codeBuilder.appendLine($"{fieldAttributeIncrementContext.typeContext.typeName} b = value.{fieldAttributeIncrementContext.getInvoke};");
                         codeBuilder.appendLine($"Unity.Netcode.NetworkVariableSerialization<{fieldAttributeIncrementContext.typeContext.typeName}>.WriteDelta(writer, ref b, ref a);");
@@ -208,9 +211,10 @@ namespace Til.Lombok.Unity.Generator {
             }
 
             codeBuilder.appendLine("[UnityEngine.RuntimeInitializeOnLoadMethodAttribute(UnityEngine.RuntimeInitializeLoadType.AfterAssembliesLoaded)]");
-            if (context.basicsContext.context.SemanticModel.Compilation.Options.SpecificDiagnosticOptions.ContainsKey("UNITY_EDITOR")) {
-                codeBuilder.appendLine("[UnityEditor.InitializeOnLoadMethodAttribute]");
-            }
+            codeBuilder.stringBuilder.AppendLine("#if UNITY_EDITOR");
+            codeBuilder.stringBuilder.AppendLine("  [UnityEditor.InitializeOnLoadMethodAttribute]");
+            codeBuilder.stringBuilder.AppendLine("#endif");
+
             using (codeBuilder.appendBlock("protected new static void InitializeOnLoad()")) {
                 codeBuilder.appendLine($"Unity.Netcode.UserNetworkVariableSerialization<{context.basicsContext.className}>.ReadValue = read;");
                 codeBuilder.appendLine($"Unity.Netcode.UserNetworkVariableSerialization<{context.basicsContext.className}>.WriteValue = write;");
@@ -222,6 +226,7 @@ namespace Til.Lombok.Unity.Generator {
                     $"typeof(Unity.Netcode.NetworkVariableSerialization<{context.basicsContext.className}>).GetProperty(\"AreEqual\", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public)?.SetValue(null, new Unity.Netcode.NetworkVariableSerialization<{context.basicsContext.className}>.EqualsDelegate(equals));"
                 );
             }
+            codeBuilder.stringBuilder.AppendLine("#pragma warning restore CS0109 // 成员不会隐藏继承的成员；不需要关键字 new");
 
             MemberDeclarationSyntax[] memberDeclarationSyntaxes = CSharpSyntaxTree.ParseText(stringBuilder.ToString())
                 .GetRoot()

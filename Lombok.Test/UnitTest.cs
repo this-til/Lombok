@@ -6,6 +6,7 @@ using Xunit.Abstractions;
 
 namespace Til.Lombok.Test {
 
+    /*
     [ILombok]
     public abstract partial class V3 {
 
@@ -53,6 +54,36 @@ namespace Til.Lombok.Test {
         [Set]
         [NetworkSerializationField]
         public double c;
+
+    }
+    */
+    [ILombok]
+    public partial class A {
+
+        [ILombok]
+        public partial class B {
+
+            [ILombok]
+            [IPartial
+            (
+                model = @"
+namespace {namespace}{{
+    public static class IS {{
+        private static {fullType} instance;
+
+        public static {fullType} getInstance() {{
+            instance ??= new {fullType}();
+            return instance;
+        }}
+    }}
+}}
+",
+                partialPos = PartialPos.Compilation
+            )]
+            public partial class C {
+            }
+
+        }
 
     }
 

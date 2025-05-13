@@ -29,19 +29,25 @@ namespace Til.Lombok.Test {
     [ILombok]
     public partial class V3 {
 
+        [ToStringField]
+        [HashCodeField]
+        [EqualsField]
         [Get]
         [Set]
-        [NetworkSerializationField]
         public double x;
 
+        [ToStringField]
+        [HashCodeField]
+        [EqualsField]
         [Get]
         [Set]
-        [NetworkSerializationField]
         public double y;
 
+        [ToStringField]
+        [HashCodeField]
+        [EqualsField]
         [Get]
         [Set]
-        [NetworkSerializationField]
         public double z;
 
     }

@@ -1821,6 +1821,8 @@ namespace Til.Lombok.Generator {
                 quote.Add(_b.contextTargetNode.toClassName());
                 _b = _b.nestContext!;
             } while (_b != null);
+            
+            quote.Reverse();
 
             fillMap["type"] = typeName;
             fillMap["fullType"] = string.Join(".", quote);

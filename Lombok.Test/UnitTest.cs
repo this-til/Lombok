@@ -1,24 +1,4 @@
 ﻿using Til.Lombok.Unity;
-/*
-namespace Til.Lombok.Test {
-
-    [ILombok]
-    [NetworkSerializationClass]
-    public partial class V3 {
-
-        [NetworkSerializationField]
-        protected double x;
-
-        [NetworkSerializationField]
-        protected double y;
-
-        [NetworkSerializationField]
-        protected double z;
-
-    }
-
-}
-*/
 using System;
 using System.Collections.Generic;
 using Xunit;
@@ -27,13 +7,14 @@ using Xunit.Abstractions;
 namespace Til.Lombok.Test {
 
     [ILombok]
-    public partial class V3 {
+    public abstract partial class V3 {
 
         [ToStringField]
         [HashCodeField]
         [EqualsField]
         [Get]
         [Set]
+        [NetworkSerializationField]
         public double x;
 
         [ToStringField]
@@ -41,6 +22,7 @@ namespace Til.Lombok.Test {
         [EqualsField]
         [Get]
         [Set]
+        [NetworkSerializationField]
         public double y;
 
         [ToStringField]
@@ -48,11 +30,11 @@ namespace Til.Lombok.Test {
         [EqualsField]
         [Get]
         [Set]
+        [NetworkSerializationField]
         public double z;
 
     }
 
-    /*
     [ILombok]
     [NetworkSerializationClass(hasBase = true)]
     public partial class V6 : V3 {
@@ -73,8 +55,8 @@ namespace Til.Lombok.Test {
         public double c;
 
     }
-    */
 
+    /*
     [ILombok]
     public partial class A {
 
@@ -292,5 +274,6 @@ public static class {type}EEE {{
         }
 
     }
+    */
 
 }

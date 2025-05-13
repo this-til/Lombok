@@ -19,8 +19,11 @@ namespace Til.Lombok.Unity.Generator {
 
             string? baseTypeName = null;
 
+            INamedTypeSymbol? declaredSymbol = context.basicsContext.semanticModel.GetDeclaredSymbol(context.basicsContext.contextTargetNode);
+            bool isAbstract = declaredSymbol?.IsAbstract ?? false;
+
             if (context.classFieldAttributeIncrementContext.caAttributeContext?.attribute.hasBase ?? false) {
-                baseTypeName = context.basicsContext.semanticModel.GetDeclaredSymbol(context.basicsContext.contextTargetNode)?.BaseType?.Name;
+                baseTypeName = declaredSymbol?.BaseType?.Name;
             }
 
             StringBuilder stringBuilder = new StringBuilder();
@@ -28,17 +31,19 @@ namespace Til.Lombok.Unity.Generator {
 
             codeBuilder.stringBuilder.AppendLine("#pragma warning disable CS0109 // 成员不会隐藏继承的成员；不需要关键字 new");
 
-            using (codeBuilder.appendBlock($"public new static void read(Unity.Netcode.FastBufferReader reader, out {context.basicsContext.className} value)")) {
-                codeBuilder.appendLine("Unity.Netcode.ByteUnpacker.ReadValuePacked(reader, out bool isNull);");
-                using (codeBuilder.appendBlock("if(isNull)")) {
-                    codeBuilder.appendLine("value = null!;");
-                    codeBuilder.appendLine("return;");
-                }
-                codeBuilder.appendLine($"value = new {context.basicsContext.className}();");
+            if (!isAbstract) {
+                using (codeBuilder.appendBlock($"public new static void read(Unity.Netcode.FastBufferReader reader, out {context.basicsContext.className} value)")) {
+                    codeBuilder.appendLine("Unity.Netcode.ByteUnpacker.ReadValuePacked(reader, out bool isNull);");
+                    using (codeBuilder.appendBlock("if(isNull)")) {
+                        codeBuilder.appendLine("value = null!;");
+                        codeBuilder.appendLine("return;");
+                    }
+                    codeBuilder.appendLine($"value = new {context.basicsContext.className}();");
 
-                codeBuilder.appendLine($"readField(reader, value);");
-                if (baseTypeName is not null) {
-                    codeBuilder.appendLine($"{baseTypeName}.readField(reader, value);");
+                    codeBuilder.appendLine($"readField(reader, value);");
+                    if (baseTypeName is not null) {
+                        codeBuilder.appendLine($"{baseTypeName}.readField(reader, value);");
+                    }
                 }
             }
 
@@ -51,24 +56,25 @@ namespace Til.Lombok.Unity.Generator {
                     }
                 }
             }
+            if (!isAbstract) {
+                using (codeBuilder.appendBlock($"public new static void readDelta(Unity.Netcode.FastBufferReader reader, ref {context.basicsContext.className} value)")) {
+                    codeBuilder.appendLine("Unity.Netcode.ByteUnpacker.ReadValuePacked(reader, out bool useRead);");
+                    using (codeBuilder.appendBlock("if(useRead)")) {
+                        codeBuilder.appendLine("read(reader, out value);");
+                        codeBuilder.appendLine("return;");
+                    }
+                    codeBuilder.appendLine("Unity.Netcode.ByteUnpacker.ReadValuePacked(reader, out bool isNull);");
+                    using (codeBuilder.appendBlock("if(isNull)")) {
+                        codeBuilder.appendLine("value = null!;");
+                        codeBuilder.appendLine("return;");
+                    }
+                    codeBuilder.appendLine($"value ??= new {context.basicsContext.className}();");
 
-            using (codeBuilder.appendBlock($"public new static void readDelta(Unity.Netcode.FastBufferReader reader, ref {context.basicsContext.className} value)")) {
-                codeBuilder.appendLine("Unity.Netcode.ByteUnpacker.ReadValuePacked(reader, out bool useRead);");
-                using (codeBuilder.appendBlock("if(useRead)")) {
-                    codeBuilder.appendLine("read(reader, out value);");
-                    codeBuilder.appendLine("return;");
-                }
-                codeBuilder.appendLine("Unity.Netcode.ByteUnpacker.ReadValuePacked(reader, out bool isNull);");
-                using (codeBuilder.appendBlock("if(isNull)")) {
-                    codeBuilder.appendLine("value = null!;");
-                    codeBuilder.appendLine("return;");
-                }
-                codeBuilder.appendLine($"value ??= new {context.basicsContext.className}();");
-
-                codeBuilder.appendLine($"readDeltaField(reader, ref value);");
-                if (baseTypeName is not null) {
-                    codeBuilder.appendLine($"{baseTypeName} _value = value;");
-                    codeBuilder.appendLine($"{baseTypeName}.readDeltaField(reader, ref _value);");
+                    codeBuilder.appendLine($"readDeltaField(reader, ref value);");
+                    if (baseTypeName is not null) {
+                        codeBuilder.appendLine($"{baseTypeName} _value = value;");
+                        codeBuilder.appendLine($"{baseTypeName}.readDeltaField(reader, ref _value);");
+                    }
                 }
             }
 
@@ -84,15 +90,17 @@ namespace Til.Lombok.Unity.Generator {
                 }
             }
 
-            using (codeBuilder.appendBlock($"public new static void write(Unity.Netcode.FastBufferWriter writer, in {context.basicsContext.className} value)")) {
-                using (codeBuilder.appendBlock("if(value == null)")) {
-                    codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, true);");
-                    codeBuilder.appendLine("return;");
-                }
-                codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, false);");
-                codeBuilder.appendLine($"writeField(writer, value);");
-                if (baseTypeName is not null) {
-                    codeBuilder.appendLine($"{baseTypeName}.writeField(writer, value);");
+            if (!isAbstract) {
+                using (codeBuilder.appendBlock($"public new static void write(Unity.Netcode.FastBufferWriter writer, in {context.basicsContext.className} value)")) {
+                    using (codeBuilder.appendBlock("if(value == null)")) {
+                        codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, true);");
+                        codeBuilder.appendLine("return;");
+                    }
+                    codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, false);");
+                    codeBuilder.appendLine($"writeField(writer, value);");
+                    if (baseTypeName is not null) {
+                        codeBuilder.appendLine($"{baseTypeName}.writeField(writer, value);");
+                    }
                 }
             }
 
@@ -105,23 +113,25 @@ namespace Til.Lombok.Unity.Generator {
                 }
             }
 
-            using (codeBuilder.appendBlock($"public new static void writeDelta(Unity.Netcode.FastBufferWriter writer, in {context.basicsContext.className} value, in {context.basicsContext.className} previousValue)")) {
-                using (codeBuilder.appendBlock("if(previousValue == null)")) {
-                    codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, true);");
-                    codeBuilder.appendLine("write(writer, in value);");
-                    codeBuilder.appendLine("return;");
-                }
-                codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, false);");
+            if (!isAbstract) {
+                using (codeBuilder.appendBlock($"public new static void writeDelta(Unity.Netcode.FastBufferWriter writer, in {context.basicsContext.className} value, in {context.basicsContext.className} previousValue)")) {
+                    using (codeBuilder.appendBlock("if(previousValue == null)")) {
+                        codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, true);");
+                        codeBuilder.appendLine("write(writer, in value);");
+                        codeBuilder.appendLine("return;");
+                    }
+                    codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, false);");
 
-                using (codeBuilder.appendBlock("if (value == null)")) {
-                    codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, true);");
-                    codeBuilder.appendLine("return;");
-                }
-                codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, false);");
+                    using (codeBuilder.appendBlock("if (value == null)")) {
+                        codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, true);");
+                        codeBuilder.appendLine("return;");
+                    }
+                    codeBuilder.appendLine("Unity.Netcode.BytePacker.WriteValuePacked(writer, false);");
 
-                codeBuilder.appendLine($"writeDeltaField(writer, value, previousValue);");
-                if (baseTypeName is not null) {
-                    codeBuilder.appendLine($"{baseTypeName}.writeDeltaField(writer, value, previousValue);");
+                    codeBuilder.appendLine($"writeDeltaField(writer, value, previousValue);");
+                    if (baseTypeName is not null) {
+                        codeBuilder.appendLine($"{baseTypeName}.writeDeltaField(writer, value, previousValue);");
+                    }
                 }
             }
 
@@ -152,80 +162,87 @@ namespace Til.Lombok.Unity.Generator {
                 }
             }
 
-            using (codeBuilder.appendBlock($"public new static void duplicateValue(in {context.basicsContext.className} value, ref {context.basicsContext.className} duplicatedValue)")) {
-                using (codeBuilder.appendBlock("if (value == null)")) {
-                    codeBuilder.appendLine("duplicatedValue = null!;");
-                    codeBuilder.appendLine("return;");
-                }
-                using (codeBuilder.appendBlock("if (duplicatedValue == null)")) {
-                    codeBuilder.appendLine($"duplicatedValue = new {context.basicsContext.className}();");
-                }
+            if (!isAbstract) {
+                using (codeBuilder.appendBlock($"public new static void duplicateValue(in {context.basicsContext.className} value, ref {context.basicsContext.className} duplicatedValue)")) {
+                    using (codeBuilder.appendBlock("if (value == null)")) {
+                        codeBuilder.appendLine("duplicatedValue = null!;");
+                        codeBuilder.appendLine("return;");
+                    }
+                    using (codeBuilder.appendBlock("if (duplicatedValue == null)")) {
+                        codeBuilder.appendLine($"duplicatedValue = new {context.basicsContext.className}();");
+                    }
 
-                foreach (FieldAttributeIncrementContext<NetworkSerializationFieldAttribute> fieldAttributeIncrementContext in context.fieldsAttributeContextList) {
-                    using (codeBuilder.appendBlock()) {
-                        codeBuilder.appendLine($"{fieldAttributeIncrementContext.typeContext.typeName} a = duplicatedValue.{fieldAttributeIncrementContext.getInvoke};");
-                        codeBuilder.appendLine($"{fieldAttributeIncrementContext.typeContext.typeName} b = value.{fieldAttributeIncrementContext.getInvoke};");
-                        using (codeBuilder.appendBlock($"if(!Unity.Netcode.NetworkVariableSerialization<{fieldAttributeIncrementContext.typeContext.typeName}>.AreEqual(ref a, ref b))")) {
-                            codeBuilder.appendLine($"Unity.Netcode.NetworkVariableSerialization<{fieldAttributeIncrementContext.typeContext.typeName}>.Duplicate(b, ref a);");
-                            codeBuilder.appendLine($"duplicatedValue.{fieldAttributeIncrementContext.setInvoke("a")};");
+                    foreach (FieldAttributeIncrementContext<NetworkSerializationFieldAttribute> fieldAttributeIncrementContext in context.fieldsAttributeContextList) {
+                        using (codeBuilder.appendBlock()) {
+                            codeBuilder.appendLine($"{fieldAttributeIncrementContext.typeContext.typeName} a = duplicatedValue.{fieldAttributeIncrementContext.getInvoke};");
+                            codeBuilder.appendLine($"{fieldAttributeIncrementContext.typeContext.typeName} b = value.{fieldAttributeIncrementContext.getInvoke};");
+                            using (codeBuilder.appendBlock($"if(!Unity.Netcode.NetworkVariableSerialization<{fieldAttributeIncrementContext.typeContext.typeName}>.AreEqual(ref a, ref b))")) {
+                                codeBuilder.appendLine($"Unity.Netcode.NetworkVariableSerialization<{fieldAttributeIncrementContext.typeContext.typeName}>.Duplicate(b, ref a);");
+                                codeBuilder.appendLine($"duplicatedValue.{fieldAttributeIncrementContext.setInvoke("a")};");
+                            }
                         }
                     }
-                }
 
-                if (baseTypeName is not null) {
-                    codeBuilder.appendLine($"{baseTypeName} _duplicatedValue = duplicatedValue;");
-                    codeBuilder.appendLine($"{baseTypeName}.duplicateValue(value, ref _duplicatedValue);");
+                    if (baseTypeName is not null) {
+                        codeBuilder.appendLine($"{baseTypeName} _duplicatedValue = duplicatedValue;");
+                        codeBuilder.appendLine($"{baseTypeName}.duplicateValue(value, ref _duplicatedValue);");
+                    }
                 }
             }
 
-            using (codeBuilder.appendBlock($"public new static bool equals(ref {context.basicsContext.className} a, ref {context.basicsContext.className} b)")) {
-                using (codeBuilder.appendBlock("if(a == b)")) {
-                    codeBuilder.appendLine("return true;");
-                }
-                using (codeBuilder.appendBlock("if(a == null)")) {
-                    codeBuilder.appendLine("return false;");
-                }
-                using (codeBuilder.appendBlock("if(b == null)")) {
-                    codeBuilder.appendLine("return false;");
-                }
+            if (!isAbstract) {
+                using (codeBuilder.appendBlock($"public new static bool equals(ref {context.basicsContext.className} a, ref {context.basicsContext.className} b)")) {
+                    using (codeBuilder.appendBlock("if(a == b)")) {
+                        codeBuilder.appendLine("return true;");
+                    }
+                    using (codeBuilder.appendBlock("if(a == null)")) {
+                        codeBuilder.appendLine("return false;");
+                    }
+                    using (codeBuilder.appendBlock("if(b == null)")) {
+                        codeBuilder.appendLine("return false;");
+                    }
 
-                foreach (FieldAttributeIncrementContext<NetworkSerializationFieldAttribute> fieldAttributeIncrementContext in context.fieldsAttributeContextList) {
-                    using (codeBuilder.appendBlock()) {
-                        codeBuilder.appendLine($"{fieldAttributeIncrementContext.typeContext.typeName} _a = a.{fieldAttributeIncrementContext.getInvoke};");
-                        codeBuilder.appendLine($"{fieldAttributeIncrementContext.typeContext.typeName} _b = b.{fieldAttributeIncrementContext.getInvoke};");
-                        using (codeBuilder.appendBlock($"if(!Unity.Netcode.NetworkVariableSerialization<{fieldAttributeIncrementContext.typeContext.typeName}>.AreEqual(ref _a, ref _b))")) {
+                    foreach (FieldAttributeIncrementContext<NetworkSerializationFieldAttribute> fieldAttributeIncrementContext in context.fieldsAttributeContextList) {
+                        using (codeBuilder.appendBlock()) {
+                            codeBuilder.appendLine($"{fieldAttributeIncrementContext.typeContext.typeName} _a = a.{fieldAttributeIncrementContext.getInvoke};");
+                            codeBuilder.appendLine($"{fieldAttributeIncrementContext.typeContext.typeName} _b = b.{fieldAttributeIncrementContext.getInvoke};");
+                            using (codeBuilder.appendBlock($"if(!Unity.Netcode.NetworkVariableSerialization<{fieldAttributeIncrementContext.typeContext.typeName}>.AreEqual(ref _a, ref _b))")) {
+                                codeBuilder.appendLine("return false;");
+                            }
+                        }
+                    }
+
+                    if (baseTypeName is not null) {
+                        codeBuilder.appendLine($"{baseTypeName} __a = a;");
+                        codeBuilder.appendLine($"{baseTypeName} __b = b;");
+                        using (codeBuilder.appendBlock($"if(!{baseTypeName}.equals(ref __a, ref __b))")) {
                             codeBuilder.appendLine("return false;");
                         }
                     }
-                }
 
-                if (baseTypeName is not null) {
-                    codeBuilder.appendLine($"{baseTypeName} __a = a;");
-                    codeBuilder.appendLine($"{baseTypeName} __b = b;");
-                    using (codeBuilder.appendBlock($"if(!{baseTypeName}.equals(ref __a, ref __b))")) {
-                        codeBuilder.appendLine("return false;");
-                    }
+                    codeBuilder.appendLine("return true;");
                 }
-
-                codeBuilder.appendLine("return true;");
             }
 
-            codeBuilder.appendLine("[UnityEngine.RuntimeInitializeOnLoadMethodAttribute(UnityEngine.RuntimeInitializeLoadType.AfterAssembliesLoaded)]");
-            codeBuilder.stringBuilder.AppendLine("#if UNITY_EDITOR");
-            codeBuilder.stringBuilder.AppendLine("  [UnityEditor.InitializeOnLoadMethodAttribute]");
-            codeBuilder.stringBuilder.AppendLine("#endif");
+            if (!isAbstract) {
+                codeBuilder.appendLine("[UnityEngine.RuntimeInitializeOnLoadMethodAttribute(UnityEngine.RuntimeInitializeLoadType.AfterAssembliesLoaded)]");
+                codeBuilder.stringBuilder.AppendLine("#if UNITY_EDITOR");
+                codeBuilder.stringBuilder.AppendLine("  [UnityEditor.InitializeOnLoadMethodAttribute]");
+                codeBuilder.stringBuilder.AppendLine("#endif");
 
-            using (codeBuilder.appendBlock("protected new static void InitializeOnLoad()")) {
-                codeBuilder.appendLine($"Unity.Netcode.UserNetworkVariableSerialization<{context.basicsContext.className}>.ReadValue = read;");
-                codeBuilder.appendLine($"Unity.Netcode.UserNetworkVariableSerialization<{context.basicsContext.className}>.WriteValue = write;");
-                codeBuilder.appendLine($"Unity.Netcode.UserNetworkVariableSerialization<{context.basicsContext.className}>.WriteDelta = writeDelta;");
-                codeBuilder.appendLine($"Unity.Netcode.UserNetworkVariableSerialization<{context.basicsContext.className}>.ReadDelta = readDelta;");
-                codeBuilder.appendLine($"Unity.Netcode.UserNetworkVariableSerialization<{context.basicsContext.className}>.DuplicateValue = duplicateValue;");
-                codeBuilder.appendLine
-                (
-                    $"typeof(Unity.Netcode.NetworkVariableSerialization<{context.basicsContext.className}>).GetProperty(\"AreEqual\", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public)?.SetValue(null, new Unity.Netcode.NetworkVariableSerialization<{context.basicsContext.className}>.EqualsDelegate(equals));"
-                );
+                using (codeBuilder.appendBlock("protected new static void InitializeOnLoad()")) {
+                    codeBuilder.appendLine($"Unity.Netcode.UserNetworkVariableSerialization<{context.basicsContext.className}>.ReadValue = read;");
+                    codeBuilder.appendLine($"Unity.Netcode.UserNetworkVariableSerialization<{context.basicsContext.className}>.WriteValue = write;");
+                    codeBuilder.appendLine($"Unity.Netcode.UserNetworkVariableSerialization<{context.basicsContext.className}>.WriteDelta = writeDelta;");
+                    codeBuilder.appendLine($"Unity.Netcode.UserNetworkVariableSerialization<{context.basicsContext.className}>.ReadDelta = readDelta;");
+                    codeBuilder.appendLine($"Unity.Netcode.UserNetworkVariableSerialization<{context.basicsContext.className}>.DuplicateValue = duplicateValue;");
+                    codeBuilder.appendLine
+                    (
+                        $"typeof(Unity.Netcode.NetworkVariableSerialization<{context.basicsContext.className}>).GetProperty(\"AreEqual\", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public)?.SetValue(null, new Unity.Netcode.NetworkVariableSerialization<{context.basicsContext.className}>.EqualsDelegate(equals));"
+                    );
+                }
             }
+
             codeBuilder.stringBuilder.AppendLine("#pragma warning restore CS0109 // 成员不会隐藏继承的成员；不需要关键字 new");
 
             MemberDeclarationSyntax[] memberDeclarationSyntaxes = CSharpSyntaxTree.ParseText(stringBuilder.ToString())

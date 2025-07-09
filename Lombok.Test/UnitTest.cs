@@ -6,10 +6,11 @@ using Xunit.Abstractions;
 
 namespace Til.Lombok.Test {
 
-    /*
     [ILombok]
+    [NetworkSerializationClass]
     public abstract partial class V3 {
 
+        /*
         [ToStringField]
         [HashCodeField]
         [EqualsField]
@@ -32,7 +33,7 @@ namespace Til.Lombok.Test {
         [Get]
         [Set]
         [NetworkSerializationField]
-        public double z;
+        public double z;*/
 
     }
 
@@ -40,23 +41,8 @@ namespace Til.Lombok.Test {
     [NetworkSerializationClass(hasBase = true)]
     public partial class V6 : V3 {
 
-        [Get]
-        [Set]
-        [NetworkSerializationField]
-        public double a;
-
-        [Get]
-        [Set]
-        [NetworkSerializationField]
-        public double b;
-
-        [Get]
-        [Set]
-        [NetworkSerializationField]
-        public double c;
-
     }
-    */
+
     [ILombok]
     public partial class A {
 
@@ -81,6 +67,7 @@ namespace {namespace}{{
                 partialPos = PartialPos.Compilation
             )]
             public partial class C {
+
             }
 
         }

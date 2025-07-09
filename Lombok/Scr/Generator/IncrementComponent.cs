@@ -240,7 +240,7 @@ namespace Til.Lombok.Generator {
                 foreach (AttributeContext<FA> attributeContext in fieldsAttributeContext.attributeContext) {
 
                     string getInvoke = fieldsAttributeContext.fieldsContext.fieldName;
-                    Func<string, string> setInvoke = v => fieldsAttributeContext.fieldsContext.fieldName + '=';
+                    Func<string, string> setInvoke = v => $"{fieldsAttributeContext.fieldsContext.fieldName}={v}";
 
                     if (!attributeContext.attribute.directAccess) {
 

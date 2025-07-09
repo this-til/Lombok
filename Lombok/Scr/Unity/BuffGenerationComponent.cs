@@ -15,6 +15,8 @@ namespace Til.Lombok.Unity.Generator {
 
         public override bool onlyOne() => true;
 
+        public override bool enforce() => true;
+
         public override void fill(TranslationClassFieldAttributeIncrementContext<NetworkSerializationFieldAttribute, NetworkSerializationClassAttribute> context) {
 
             string? baseTypeName = null;

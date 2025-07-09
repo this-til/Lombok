@@ -4,7 +4,7 @@
         <LangVersion>9</LangVersion>
         <Nullable>enable</Nullable>
         <PackageId>Til.Lombok</PackageId>
-        <Version>3.0.9</Version>
+        <Version>3.0.11</Version>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <Authors>til</Authors>
         <Title>由于作者太懒了专门开发的代码生成器</Title>
